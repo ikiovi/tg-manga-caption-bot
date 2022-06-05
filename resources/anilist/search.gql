@@ -1,0 +1,13 @@
+query ($id: Int, $search: String) {  #$page: Int, $perPage: Int, #page: $page, perPage: $perPage
+
+  Page { 
+    media(id: $id, search: $search, type: MANGA) {
+      id
+      title {
+        romaji,
+        english
+      }
+      synonyms
+    }
+  }
+}
