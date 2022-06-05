@@ -1,4 +1,4 @@
-query ($id: Int, $search: String) {  #$page: Int, $perPage: Int, #page: $page, perPage: $perPage
+query ($id: Int, $search: String) { 
 
   Page { 
     media(id: $id, search: $search, type: MANGA) {
