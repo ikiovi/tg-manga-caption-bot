@@ -13,7 +13,8 @@ const messages = {
     postSeparate: 'Post separatly',
     retry: 'Retry',
     cancel: 'Cancel',
-    done: 'Done!'
+    done: 'Done!',
+    noCached: 'No cached caption. Try again.',
 }
 
 let channels: number[] = [];

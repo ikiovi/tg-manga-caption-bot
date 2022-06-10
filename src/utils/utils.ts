@@ -1,3 +1,6 @@
+import { MyContext } from "../interfaces/context";
+import { AnilistMedia } from "../services/anilist/types";
+
 function parseInput(input: string): { command: string, value: number } {
     const data = input.split(':'),
         command = data[0],
@@ -37,4 +40,16 @@ function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: bool
     return { hasEqualValue: false, synonyms: text };
 }
 
-export { parseInput, parseCountry, formatToCode, parseSynonyms, parseTags };
+function getCaption(media: AnilistMedia) : string{
+    const { id, title: { english, romaji }, genres, countryOfOrigin } = media;
+    return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${formatToCode(english || romaji)}`
+}
+
+async function isAdmin(ctx: MyContext, channel_id: number) : Promise<boolean> {
+    if(!channel_id) return false;
+
+    let members = await ctx.telegram.getChatAdministrators(channel_id);
+    return members.findIndex(member => member.user.id == ctx.from?.id) != -1;
+}
+
+export { parseInput, parseCountry, formatToCode, parseSynonyms, parseTags, isAdmin, getCaption };

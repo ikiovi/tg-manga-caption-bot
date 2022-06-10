@@ -3,7 +3,8 @@ import { Scenes, Context, NarrowedContext, Types } from 'telegraf'
 interface MySceneSession extends Scenes.SceneSessionData {
     waitFor: { [key: string]: boolean }
     files: string[]
-    caption: string,
+    caption: string
+    cached_id: number
     isDocument: boolean
 }
 

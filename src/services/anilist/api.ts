@@ -13,13 +13,13 @@ export function getByID(id: number, callback: (result: AnilistData) => void) {
     callApi(query, { id }, callback);
 }
 
-function callApi(query: string, variables: any, callback: Function) {
+function callApi<T>(query: string, variables: { [k: string]: string | number }, callback: (data: T) => void) {
     const url = 'https://graphql.anilist.co'
 
     const options = {
         method: 'POST',
         headers: {
-            'Content-Type' : 'application/json',
+            'Content-Type': 'application/json',
             'Accept': 'application/json',
         },
         body: JSON.stringify({
@@ -30,13 +30,13 @@ function callApi(query: string, variables: any, callback: Function) {
 
     fetch(url, options)
         .then(handleResponse)
-        .then(data => callback(data))
+        .then(callback)
         .catch(handleError);
 }
 
 //#region Handlers
 function handleResponse(response: Response) {
-    return response.json().then(function (json) {
+    return response.json().then(json => {
         return response.ok ? json : Promise.reject(json);
     });
 }

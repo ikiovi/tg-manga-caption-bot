@@ -3,10 +3,10 @@ import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
 import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { messages } from '../data';
 import { DocumentContext, MyContext, PhotoContext } from '../interfaces/context';
-import { extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
+import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
 import { getByID, searchByName } from '../services/anilist/api';
 import { SearchAnilistMedia } from '../services/anilist/types';
-import { formatToCode, parseCountry, parseInput, parseSynonyms, parseTags } from '../utils/utils';
+import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
 import { clearState, getState, setState, WaitStates } from '../utils/waitStates';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
@@ -19,8 +19,8 @@ postScene.enter(ctx => {
 postScene.command('cancel', cancelHandler);
 postScene.command('leave', ctx => ctx.scene.leave());
 
-postScene.on('text', (ctx, next) => {
-    if (!getState(ctx, WaitStates.Title)) return next();
+postScene.on('text', ctx => {
+    if (!getState(ctx, WaitStates.Title)) return;
     const title = ctx.message.text;
 
     searchByName(title, ({ data: { Page: { media } } }) => {
@@ -40,15 +40,15 @@ postScene.action(/choose/, ctx => {
     getByID(id, ({ data: { Media } }) => {
         clearState(ctx, WaitStates.Title);
 
-        const { id, title: { english, romaji }, genres, countryOfOrigin, siteUrl } = Media;
-        const caption = ctx.scene.session.caption = `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${formatToCode(english || romaji)}`;
+        ctx.scene.session.cached_id = id;
+        const caption = ctx.scene.session.caption = getCaption(Media);
         const keyboard = extendedInlineKeyboard(true,
             staticButtons.accept(messages.post, 0),
             (ctx.scene.session.files.length > 1) ? staticButtons.accept(messages.postSeparate, 1) : undefined,
             staticButtons.cancel()
         );
 
-        ctx.replyWithHTML(`${caption}\n<a href="${siteUrl}">Link</a>`, keyboard);
+        ctx.replyWithHTML(`${caption}\n<a href="${Media.siteUrl}">Link</a>`, keyboard);
     });
 });
 
@@ -63,19 +63,21 @@ postScene.action('media_collected', ctx => {
 
 postScene.action(/accept/, async ctx => {
     ctx.answerCbQuery();
-    const { channel_id } = (<any>ctx.scene.state);
-    const isAdmin = (await ctx.telegram.getChatAdministrators(channel_id)).findIndex(member => member.user == ctx.from);
 
-    if (!isAdmin) {
-        ctx.deleteMessage();
-        ctx.reply(messages.notAdmin);
+    const { channel_id } = (<{ channel_id: number }>ctx.scene.state);
+    const { files, isDocument, cached_id, caption } = ctx.scene.session;
+    const error = !await isAdmin(ctx, channel_id) ? messages.notAdmin : !cached_id || !caption ? messages.noCached : undefined;
+
+    if (error) {
+        ctx.editMessageReplyMarkup(undefined);
+        ctx.reply(error);
         return ctx.scene.leave();
     }
-    const { files, caption, isDocument } = ctx.scene.session;
-    const type = (isDocument) ? 'document' : 'photo';
+
+    const type = isDocument ? 'document' : 'photo';
     const { value: postType } = parseInput(ctx.match.input);
 
-    if (files.length == 1 || postType) files.forEach(file => sendSinglePhoto(file));
+    if (files.length == 1 || postType) files.forEach(sendSinglePhoto);
     else if (files.length > 1) sendMediaGroup(files);
     else ctx.reply('Error: No Images');
 
@@ -90,7 +92,9 @@ postScene.action(/accept/, async ctx => {
         ctx.telegram.sendMediaGroup(channel_id, createMediaGroup(files, caption, type))
     }
 
-    ctx.editMessageReplyMarkup(undefined);
+    ctx.editMessageReplyMarkup(
+        extendedInlineKeyboard(true, commandInlineButton(messages.again, 'choose', cached_id)).reply_markup
+    );
     ctx.scene.reenter();
 });
 
@@ -100,7 +104,7 @@ postScene.action('cancel', cancelHandler);
 function photoHandler(ctx: PhotoContext | DocumentContext) {
     if (!getState(ctx, WaitStates.Media)) return;
 
-    const photo_id: string | undefined = (<PhotoContext>ctx).message?.photo[0]?.file_id;
+    const photo_id: string | undefined = (<PhotoContext>ctx).message?.photo?.shift()?.file_id;
     const document_id: string | undefined = (<DocumentContext>ctx).message?.document?.file_id;
 
     ctx.scene.session.isDocument = !!document_id;
@@ -115,8 +119,7 @@ function waitForMedia(ctx: MyContext) {
 function cancelHandler(ctx: MyContext) {
     ctx.deleteMessage();
     if (getState(ctx, WaitStates.Title)) waitForMedia(ctx);
-    else if (ctx.scene.session.files.length) setState(ctx, WaitStates.Title);
-    else if (getState(ctx, WaitStates.Media)) ctx.scene.reenter();
+    else if (ctx.scene.session.files.length || getState(ctx, WaitStates.Media)) ctx.scene.reenter();
     else ctx.scene.leave();
 }
 
@@ -130,7 +133,7 @@ function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Ma
             const { hasEqualValue, synonyms } = parseSynonyms(value.synonyms, title);
 
             message += `${i + 1}. ${formatToCode(english ?? romaji)}\n`;
-            if (hasEqualValue || synonyms) message += `${(hasEqualValue) ? formatToCode(title) : synonyms}\n`;
+            if (hasEqualValue || synonyms) message += `${hasEqualValue ? formatToCode(title) : synonyms}\n`;
             return staticButtons.choose(`${i + 1}`, value.id);
         }
     );

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "start": "npm run build && node ./out/index.js"
+    "start": "npm run build && node ./out/index.js",
+    "start-dev": "node ./out/index.js"
   },
   "keywords": [],
   "author": "",
