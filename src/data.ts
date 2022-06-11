@@ -10,11 +10,11 @@ const messages = {
     noChannels: 'Channel list is empty. First you need to add bot to the channel',
     again: 'Again',
     post: 'Post',
-    postSeparate: 'Post separatly',
     retry: 'Retry',
     cancel: 'Cancel',
     done: 'Done!',
     noCached: 'No cached caption. Try again.',
+    noMediaCached: 'No cached media. Try again.'
 }
 
 let channels: number[] = [];

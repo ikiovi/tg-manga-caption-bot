@@ -43,8 +43,7 @@ postScene.action(/choose/, ctx => {
         ctx.scene.session.cached_id = id;
         const caption = ctx.scene.session.caption = getCaption(Media);
         const keyboard = extendedInlineKeyboard(true,
-            staticButtons.accept(messages.post, 0),
-            (ctx.scene.session.files.length > 1) ? staticButtons.accept(messages.postSeparate, 1) : undefined,
+            staticButtons.accept,
             staticButtons.cancel()
         );
 
@@ -75,11 +74,10 @@ postScene.action(/accept/, async ctx => {
     }
 
     const type = isDocument ? 'document' : 'photo';
-    const { value: postType } = parseInput(ctx.match.input);
 
-    if (files.length == 1 || postType) files.forEach(sendSinglePhoto);
+    if (files.length == 1) sendSinglePhoto(files.pop()!);
     else if (files.length > 1) sendMediaGroup(files);
-    else ctx.reply('Error: No Images');
+    else ctx.reply(messages.noMediaCached);
 
     function sendSinglePhoto(file: string) {
         const extra: ExtraPhoto = { caption, parse_mode: 'HTML' };

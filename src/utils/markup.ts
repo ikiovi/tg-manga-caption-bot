@@ -4,7 +4,7 @@ import { messages } from "../data";
 
 const staticButtons = {
     cancel: (text: string = messages.cancel) => commandInlineButton(text, 'cancel'),
-    accept: (text: string, id: number) => commandInlineButton(text, 'accept', id),
+    accept: commandInlineButton(messages.post, 'accept'),
     choose: (text: string, id: number) => commandInlineButton(text, 'choose', id),
     channel: (text: string, id: number) => commandInlineButton(text, 'channel', id),
     collectComplete: commandInlineButton(messages.done, 'media_collected')
