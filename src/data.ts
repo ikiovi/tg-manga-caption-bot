@@ -25,7 +25,7 @@ const path = join(__dirname, process.env.CHANNELS);
     try {
         channels = JSON.parse(readFileSync(path, 'utf-8'));
     } catch {
-        writeFileSync(process.env.CHANNELS, JSON.stringify([]));
+        saveChannels();
     }
 })();
 
