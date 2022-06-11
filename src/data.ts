@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "fs"
+import { join } from "path";
 
 const messages = {
     start: 'This bot provides a convenient way to caption moments from manga / manhua / manhwa.\nThe bot uses the Anilist API.',
@@ -18,10 +19,11 @@ const messages = {
 }
 
 let channels: number[] = [];
+const path = join(__dirname, process.env.CHANNELS);
 
 (function () {
     try {
-        channels = JSON.parse(readFileSync(process.env.CHANNELS, 'utf-8'));
+        channels = JSON.parse(readFileSync(path, 'utf-8'));
     } catch {
         writeFileSync(process.env.CHANNELS, JSON.stringify([]));
     }
@@ -39,7 +41,7 @@ function deleteChannel(id: number) {
 }
 
 function saveChannels() {
-    writeFileSync(process.env.CHANNELS, JSON.stringify(channels), 'utf-8');
+    writeFileSync(path, JSON.stringify(channels), 'utf-8');
 }
 //#endregion
 
