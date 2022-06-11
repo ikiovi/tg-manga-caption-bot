@@ -19,7 +19,8 @@ const messages = {
 }
 
 let channels: number[] = [];
-const path = join(__dirname, process.env.CHANNELS);
+const fileName = process.env.CHANNELS.replace(/['"]+/g, '') ?? '../channels.json';
+const path = join(__dirname, fileName);
 
 (function () {
     try {
@@ -46,3 +47,4 @@ function saveChannels() {
 //#endregion
 
 export { messages, addChannel, deleteChannel, saveChannels, channels }
+

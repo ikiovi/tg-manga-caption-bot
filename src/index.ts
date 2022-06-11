@@ -7,8 +7,17 @@ import { MyContext } from './interfaces/context';
 import { extendedInlineKeyboard, staticButtons } from './utils/markup';
 import { isAdmin, parseInput } from './utils/utils';
 
-const bot = new Telegraf<MyContext>(process.env.TOKEN);
+const token = process.env.TOKEN;
+if (!token) throw new Error('TOKEN must be provided!')
+
+const bot = new Telegraf<MyContext>(token);
 const stage = new Scenes.Stage<MyContext>([postScene]);
+
+bot.catch(err => {
+    const date = new Date();
+    const dateString = `[${date.toLocaleDateString()} ${date.toLocaleTimeString()}]`;
+    console.error(`${dateString} Error: `, err);
+});
 
 bot.use(session());
 bot.use(stage.middleware());
@@ -24,8 +33,8 @@ bot.help(ctx => {
 bot.command('post', async ctx => {
     const buttons: any[] = await Promise.all(channels.map(
         async channel_id => {
-            const { title } = await bot.telegram.getChat(channel_id) as Chat.SupergroupGetChat;
-            return staticButtons.channel(title, channel_id); 
+            const { title } = await ctx.telegram.getChat(channel_id) as Chat.SupergroupGetChat;
+            return staticButtons.channel(title, channel_id);
         }
     ));
 
@@ -53,3 +62,6 @@ bot.action(/channel/, async ctx => {
 bot.action('cancel', ctx => ctx.deleteMessage());
 
 bot.launch();
+
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))
