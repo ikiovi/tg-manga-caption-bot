@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "fs"
-import { join } from "path";
+import { resolve } from "path";
 
 const messages = {
     start: 'This bot provides a convenient way to caption moments from manga / manhua / manhwa.\nThe bot uses the Anilist API.',
@@ -19,8 +19,8 @@ const messages = {
 }
 
 let channels: number[] = [];
-const fileName = process.env.CHANNELS.replace(/['"]+/g, '') ?? '../channels.json';
-const path = join(__dirname, fileName);
+const fileName = process.env.CHANNELS.replace(/['"]+/g, '') ?? './channels.json';
+const path = resolve(fileName);
 
 (function () {
     try {

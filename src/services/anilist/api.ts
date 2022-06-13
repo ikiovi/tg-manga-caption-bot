@@ -1,15 +1,16 @@
 import { readFileSync } from "fs";
+import { resolve, join } from "path";
 import { AnilistData, AnilistSearchData } from "./types";
 
-const queries = './resources/anilist/';
+const queries = resolve('./resources/anilist/');
 
 export function searchByName(search: string, callback: (result: AnilistSearchData) => void) {
-    const query = readFileSync(`${queries}search.gql`, 'utf8')
+    const query = readFileSync(join(queries, 'search.gql'), 'utf8')
     callApi(query, { search }, callback);
 }
 
 export function getByID(id: number, callback: (result: AnilistData) => void) {
-    const query = readFileSync(`${queries}get.gql`, 'utf8')
+    const query = readFileSync(join(queries, 'get.gql'), 'utf8')
     callApi(query, { id }, callback);
 }
 

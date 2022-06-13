@@ -1,4 +1,4 @@
-import { MyContext } from "../interfaces/context";
+import { MyContext } from "../types/context";
 import { AnilistMedia } from "../services/anilist/types";
 
 function parseInput(input: string): { command: string, value: number } {

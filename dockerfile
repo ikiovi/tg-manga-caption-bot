@@ -12,4 +12,5 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=appbuild /app/out ./out
+COPY --from=appbuild /app/resources ./resources
 CMD ["npm", "start"]

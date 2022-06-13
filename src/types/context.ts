@@ -5,7 +5,7 @@ interface MySceneSession extends Scenes.SceneSessionData {
     files: string[]
     caption: string
     cached_id: number
-    isDocument: boolean
+    mediaType : 'photo' | 'document'
 }
 
 type PhotoContext = NarrowedContext<MyContext, Types.MountMap['photo']>;

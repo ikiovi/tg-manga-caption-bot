@@ -1,8 +1,9 @@
-import { MyContext } from "../interfaces/context";
+import { MyContext } from "../types/context";
 
 enum WaitStates {
     Media,
     Title,
+    Choose,
 }
 
 function setState(ctx: MyContext, state: WaitStates, only: boolean = true) {

@@ -3,7 +3,7 @@ import { Scenes, session, Telegraf } from 'telegraf';
 import { Chat } from 'telegraf/typings/core/types/typegram';
 import { addChannel, channels, deleteChannel, messages } from './data';
 import { postScene } from './handlers/post';
-import { MyContext } from './interfaces/context';
+import { MyContext } from './types/context';
 import { extendedInlineKeyboard, staticButtons } from './utils/markup';
 import { isAdmin, parseInput } from './utils/utils';
 
@@ -15,8 +15,9 @@ const stage = new Scenes.Stage<MyContext>([postScene]);
 
 bot.catch(err => {
     const date = new Date();
-    const dateString = `[${date.toLocaleDateString()} ${date.toLocaleTimeString()}]`;
-    console.error(`${dateString} Error: `, err);
+    const dateString = `\x1b[41m[${date.toLocaleDateString()} ${date.toLocaleTimeString()}]\x1b[0m`;
+    const { message, name } = <Error>err;
+    console.error(dateString, `${name}: ${message}`);
 });
 
 bot.use(session());
@@ -63,5 +64,5 @@ bot.action('cancel', ctx => ctx.deleteMessage());
 
 bot.launch();
 
-process.once('SIGINT', () => bot.stop('SIGINT'))
-process.once('SIGTERM', () => bot.stop('SIGTERM'))
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));

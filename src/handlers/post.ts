@@ -2,12 +2,12 @@ import { Markup, Scenes } from 'telegraf';
 import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
 import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { messages } from '../data';
-import { DocumentContext, MyContext, PhotoContext } from '../interfaces/context';
+import { DocumentContext, MyContext, PhotoContext } from '../types/context';
 import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
 import { getByID, searchByName } from '../services/anilist/api';
 import { SearchAnilistMedia } from '../services/anilist/types';
 import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
-import { clearState, getState, setState, WaitStates } from '../utils/waitStates';
+import { clearState, getState, initStates, setState, WaitStates } from '../utils/waitStates';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
 
@@ -26,6 +26,7 @@ postScene.on('text', ctx => {
     searchByName(title, ({ data: { Page: { media } } }) => {
         const { keyboard, message } = parseMedia(media, title);
         ctx.replyWithHTML(message, keyboard);
+        setState(ctx, WaitStates.Choose);
     });
 });
 
@@ -34,11 +35,11 @@ postScene.on('photo', photoHandler);
 
 postScene.action(/choose/, ctx => {
     ctx.answerCbQuery();
-    if (!getState(ctx, WaitStates.Title) && !ctx.scene.session.files.length) return;
+    if (!(getState(ctx, WaitStates.Title) || getState(ctx, WaitStates.Choose)) || !ctx.scene.session.files.length) return;
     const { value: id } = parseInput(ctx.match.input);
 
     getByID(id, ({ data: { Media } }) => {
-        clearState(ctx, WaitStates.Title);
+        initStates(ctx);
 
         ctx.scene.session.cached_id = id;
         const caption = ctx.scene.session.caption = getCaption(Media);
@@ -64,16 +65,14 @@ postScene.action(/accept/, async ctx => {
     ctx.answerCbQuery();
 
     const { channel_id } = (<{ channel_id: number }>ctx.scene.state);
-    const { files, isDocument, cached_id, caption } = ctx.scene.session;
-    const error = !await isAdmin(ctx, channel_id) ? messages.notAdmin : !cached_id || !caption ? messages.noCached : undefined;
+    const { files, mediaType: type, cached_id, caption } = ctx.scene.session;
+    let error = !await isAdmin(ctx, channel_id) ? messages.notAdmin : !cached_id || !caption ? messages.noCached : undefined;
 
     if (error) {
         ctx.editMessageReplyMarkup(undefined);
         ctx.reply(error);
         return ctx.scene.leave();
     }
-
-    const type = isDocument ? 'document' : 'photo';
 
     if (files.length == 1) sendSinglePhoto(files.pop()!);
     else if (files.length > 1) sendMediaGroup(files);
@@ -105,8 +104,11 @@ function photoHandler(ctx: PhotoContext | DocumentContext) {
     const photo_id: string | undefined = (<PhotoContext>ctx).message?.photo?.shift()?.file_id;
     const document_id: string | undefined = (<DocumentContext>ctx).message?.document?.file_id;
 
-    ctx.scene.session.isDocument = !!document_id;
-    ctx.scene.session.files.push(photo_id ?? document_id);
+    const type = !!document_id ? 'document' : 'photo';
+    const mediaType = ctx.scene.session.mediaType ??= type;
+
+    if (type == mediaType) ctx.scene.session.files.push(photo_id ?? document_id);
+    else ctx.reply(`Current media type: ${type}\nExpected media type: ${mediaType}`)
 }
 
 function waitForMedia(ctx: MyContext) {
@@ -114,10 +116,14 @@ function waitForMedia(ctx: MyContext) {
     ctx.reply(messages.waitForMedia, extendedInlineKeyboard(false, staticButtons.collectComplete, staticButtons.cancel(messages.retry)));
 }
 
+
+// TODO
 function cancelHandler(ctx: MyContext) {
     ctx.deleteMessage();
+    const { length } = ctx.scene.session.files;
     if (getState(ctx, WaitStates.Title)) waitForMedia(ctx);
-    else if (ctx.scene.session.files.length || getState(ctx, WaitStates.Media)) ctx.scene.reenter();
+    else if (length && getState(ctx, WaitStates.Media)) ctx.scene.reenter();
+    else if (getState(ctx, WaitStates.Choose) || length) setState(ctx, WaitStates.Title);
     else ctx.scene.leave();
 }
 
