@@ -7,7 +7,7 @@ import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, s
 import { getByID, searchByName } from '../services/anilist/api';
 import { SearchAnilistMedia } from '../services/anilist/types';
 import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
-import { clearState, getState, initStates, setState, WaitStates } from '../utils/waitStates';
+import { getState, initStates, setState, WaitStates } from '../utils/waitStates';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
 
@@ -57,7 +57,7 @@ postScene.action('media_collected', ctx => {
     if (getState(ctx, WaitStates.Media) && ctx.scene.session.files.length) {
         setState(ctx, WaitStates.Title);
         ctx.editMessageReplyMarkup(undefined);
-        ctx.reply(messages.waitForTitle);
+        ctx.reply(messages.waitForTitle, extendedInlineKeyboard(true, staticButtons.cancel('Back')));
     }
 })
 
@@ -92,11 +92,12 @@ postScene.action(/accept/, async ctx => {
     ctx.editMessageReplyMarkup(
         extendedInlineKeyboard(true, commandInlineButton(messages.again, 'choose', cached_id)).reply_markup
     );
-    ctx.scene.reenter();
+    ctx.scene.leave();
 });
 
 postScene.action('cancel', cancelHandler);
 
+postScene.leave(ctx => ctx.reply(messages.exitPost));
 
 function photoHandler(ctx: PhotoContext | DocumentContext) {
     if (!getState(ctx, WaitStates.Media)) return;
@@ -113,16 +114,15 @@ function photoHandler(ctx: PhotoContext | DocumentContext) {
 
 function waitForMedia(ctx: MyContext) {
     setState(ctx, WaitStates.Media);
-    ctx.reply(messages.waitForMedia, extendedInlineKeyboard(false, staticButtons.collectComplete, staticButtons.cancel(messages.retry)));
+    ctx.reply(messages.waitForMedia(ctx.scene.session.files.length), extendedInlineKeyboard(false, staticButtons.collectComplete, staticButtons.cancel(messages.clear)));
 }
 
-
-// TODO
 function cancelHandler(ctx: MyContext) {
     ctx.deleteMessage();
     const { length } = ctx.scene.session.files;
+
     if (getState(ctx, WaitStates.Title)) waitForMedia(ctx);
-    else if (length && getState(ctx, WaitStates.Media)) ctx.scene.reenter();
+    else if (getState(ctx, WaitStates.Media) && length) ctx.scene.reenter();
     else if (getState(ctx, WaitStates.Choose) || length) setState(ctx, WaitStates.Title);
     else ctx.scene.leave();
 }

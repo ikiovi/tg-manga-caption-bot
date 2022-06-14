@@ -22,7 +22,7 @@ function parseCountry(country: string): string {
 }
 
 function parseTags(tags: string[]): string {
-    return ' #' + tags.join(' #').replace('-', '_');
+    return ' #' + tags.map(tag => tag.replace(/-| /g, '_')).join(' #');
 }
 
 function formatToCode(text: string): string {
@@ -40,13 +40,13 @@ function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: bool
     return { hasEqualValue: false, synonyms: text };
 }
 
-function getCaption(media: AnilistMedia) : string{
+function getCaption(media: AnilistMedia): string {
     const { id, title: { english, romaji }, genres, countryOfOrigin } = media;
     return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${formatToCode(english || romaji)}`
 }
 
-async function isAdmin(ctx: MyContext, channel_id: number) : Promise<boolean> {
-    if(!channel_id) return false;
+async function isAdmin(ctx: MyContext, channel_id: number): Promise<boolean> {
+    if (!channel_id) return false;
 
     let members = await ctx.telegram.getChatAdministrators(channel_id);
     return members.findIndex(member => member.user.id == ctx.from?.id) != -1;
