@@ -1,22 +1,22 @@
-import { readFileSync, writeFileSync } from "fs"
 import { resolve } from "path";
+import { readFileSync, writeFileSync } from "fs"
 
 const messages = {
-    start: 'This bot provides a convenient way to caption moments from manga / manhua / manhwa.\nThe bot uses the Anilist API.',
-    waitForTitle: 'Please enter title.',
-    notAdmin: 'Access is denied. You are not the admin of this channel',
-    waitForMedia: (count: number) => `Please send pictures. ${count == 0 ? '' : `\nMedia count: ${count}`}`,
-    titleNotFound: 'No matches found.',
-    chooseChannel: 'Select a channel:',
-    noChannels: 'Channel list is empty. First you need to add bot to the channel.',
-    again: 'Again',
     post: 'Post',
+    done: 'Done',
+    again: 'Again',
     clear: 'Clear',
     cancel: 'Cancel',
-    done: 'Done',
+    titleNotFound: 'No matches found.',
+    chooseChannel: 'Select a channel:',
+    exitPost: 'Leaving /post context.',
+    waitForTitle: 'Please enter title.',
     noCached: 'No cached caption. Try again.',
     noMediaCached: 'No cached media. Try again.',
-    exitPost: 'Leaving /post context.'
+    notAdmin: 'Access is denied. You are not the admin of this channel',
+    noChannels: 'Channel list is empty. First you need to add bot to the channel.',
+    waitForMedia: (count: number) => `Please send pictures. ${count == 0 ? '' : `\nMedia count: ${count}`}`,
+    start: 'This bot provides a convenient way to caption moments from manga / manhua / manhwa.\nThe bot uses the Anilist API.',
 }
 
 let channels: number[] = [];
@@ -47,5 +47,5 @@ function saveChannels() {
 }
 //#endregion
 
-export { messages, addChannel, deleteChannel, saveChannels, channels }
+export { messages, addChannel, deleteChannel, channels }
 

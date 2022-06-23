@@ -1,13 +1,13 @@
-import { Markup, Scenes } from 'telegraf';
-import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
-import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { messages } from '../data';
-import { DocumentContext, MyContext, PhotoContext } from '../types/context';
-import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
-import { getByID, searchByName } from '../services/anilist/api';
+import { Markup, Scenes } from 'telegraf';
+import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { SearchAnilistMedia } from '../services/anilist/types';
-import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
+import { getByID, searchByName } from '../services/anilist/api';
+import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
+import { DocumentContext, MyContext, PhotoContext } from '../types/context';
 import { getState, initStates, setState, WaitStates } from '../utils/waitStates';
+import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
+import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
 
@@ -96,8 +96,6 @@ postScene.action(/accept/, async ctx => {
 });
 
 postScene.action('cancel', cancelHandler);
-
-postScene.leave(ctx => ctx.reply(messages.exitPost));
 
 function photoHandler(ctx: PhotoContext | DocumentContext) {
     if (!getState(ctx, WaitStates.Media)) return;

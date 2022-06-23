@@ -1,4 +1,4 @@
-FROM node:18.1.0 as appbuild
+FROM node:18.1-alpine as appbuild
 
 WORKDIR /app
 COPY package*.json ./
@@ -6,7 +6,7 @@ RUN npm i
 COPY . .
 RUN npm run build
 
-FROM node:18.1.0
+FROM node:18.1-alpine
 
 WORKDIR /app
 COPY package*.json ./
