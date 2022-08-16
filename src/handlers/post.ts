@@ -1,12 +1,13 @@
-import { messages } from '../data';
+import { channels, messages } from '../data';
 import { Markup, Scenes } from 'telegraf';
 import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { SearchAnilistMedia } from '../services/anilist/types';
 import { getByID, searchByName } from '../services/anilist/api';
 import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
 import { DocumentContext, MyContext, PhotoContext } from '../types/context';
-import { getState, initStates, setState, WaitStates } from '../utils/waitStates';
-import { formatToCode, getCaption, isAdmin, parseInput, parseSynonyms } from '../utils/utils';
+import { getState, setState, WaitStates } from '../utils/waitStates';
+import { isAdmin, parseInput } from '../utils/utils';
+import { getCaption, parseSynonyms, textToCode } from '../utils/caption';
 import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
@@ -22,11 +23,11 @@ postScene.command('leave', ctx => ctx.scene.leave());
 postScene.on('text', ctx => {
     if (!getState(ctx, WaitStates.Title)) return;
     const title = ctx.message.text;
-
+    //TODO: possible ddos threat
     searchByName(title, ({ data: { Page: { media } } }) => {
-        const { keyboard, message } = parseMedia(media, title);
+        const { keyboard, message, result } = parseMedia(media, title);
         ctx.replyWithHTML(message, keyboard);
-        setState(ctx, WaitStates.Choose);
+        if (result) setState(ctx, WaitStates.Choose);
     });
 });
 
@@ -39,7 +40,7 @@ postScene.action(/choose/, ctx => {
     const { value: id } = parseInput(ctx.match.input);
 
     getByID(id, ({ data: { Media } }) => {
-        initStates(ctx);
+        ctx.scene.session.waitFor = undefined;
 
         ctx.scene.session.cached_id = id;
         const caption = ctx.scene.session.caption = getCaption(Media);
@@ -57,7 +58,7 @@ postScene.action('media_collected', ctx => {
     if (getState(ctx, WaitStates.Media) && ctx.scene.session.files.length) {
         setState(ctx, WaitStates.Title);
         ctx.editMessageReplyMarkup(undefined);
-        ctx.reply(messages.waitForTitle, extendedInlineKeyboard(true, staticButtons.cancel('Back')));
+        ctx.reply(messages.waitTitle, extendedInlineKeyboard(true, staticButtons.cancel('Back')));
     }
 })
 
@@ -66,7 +67,7 @@ postScene.action(/accept/, async ctx => {
 
     const { channel_id } = (<{ channel_id: number }>ctx.scene.state);
     const { files, mediaType: type, cached_id, caption } = ctx.scene.session;
-    let error = !await isAdmin(ctx, channel_id) ? messages.notAdmin : !cached_id || !caption ? messages.noCached : undefined;
+    let error = !await isAdmin(ctx, channel_id, channels) ? messages.accessDenied : !cached_id || !caption ? messages.captionCacheError : undefined;
 
     if (error) {
         ctx.editMessageReplyMarkup(undefined);
@@ -76,7 +77,7 @@ postScene.action(/accept/, async ctx => {
 
     if (files.length == 1) sendSinglePhoto(files.pop()!);
     else if (files.length > 1) sendMediaGroup(files);
-    else ctx.reply(messages.noMediaCached);
+    else ctx.reply(messages.mediaCacheError);
 
     function sendSinglePhoto(file: string) {
         const extra: ExtraPhoto = { caption, parse_mode: 'HTML' };
@@ -90,7 +91,7 @@ postScene.action(/accept/, async ctx => {
     }
 
     ctx.editMessageReplyMarkup(
-        extendedInlineKeyboard(true, commandInlineButton(messages.again, 'choose', cached_id)).reply_markup
+        extendedInlineKeyboard(true, commandInlineButton(messages.retry, 'choose', cached_id)).reply_markup
     );
     ctx.scene.leave();
 });
@@ -112,7 +113,13 @@ function photoHandler(ctx: PhotoContext | DocumentContext) {
 
 function waitForMedia(ctx: MyContext) {
     setState(ctx, WaitStates.Media);
-    ctx.reply(messages.waitForMedia(ctx.scene.session.files.length), extendedInlineKeyboard(false, staticButtons.collectComplete, staticButtons.cancel(messages.clear)));
+
+    const { length } = ctx.scene.session.files;
+    const message = messages.waitMedia + (length == 0 ? '' : '\n' + messages.mediaCount.replace('{count}', `${length}`));
+
+    ctx.reply(message,
+        extendedInlineKeyboard(false, staticButtons.collectComplete, staticButtons.cancel(messages.clear))
+    );
 }
 
 function cancelHandler(ctx: MyContext) {
@@ -120,13 +127,12 @@ function cancelHandler(ctx: MyContext) {
     const { length } = ctx.scene.session.files;
 
     if (getState(ctx, WaitStates.Title)) waitForMedia(ctx);
-    else if (getState(ctx, WaitStates.Media) && length) ctx.scene.reenter();
     else if (getState(ctx, WaitStates.Choose) || length) setState(ctx, WaitStates.Title);
-    else ctx.scene.leave();
+    else ctx.scene.reenter();
 }
 
-function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Markup.Markup<InlineKeyboardMarkup>, message: string } {
-    if (!media.length) return { keyboard: undefined, message: messages.titleNotFound };
+function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Markup.Markup<InlineKeyboardMarkup>, message: string, result: boolean } {
+    if (!media.length) return { keyboard: undefined, message: messages.titleNotFound, result: false };
 
     let message = '';
     const keyboard = inlineKeyboardFromArray<SearchAnilistMedia>(media, 8, true,
@@ -134,12 +140,12 @@ function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Ma
             const { romaji, english } = value.title;
             const { hasEqualValue, synonyms } = parseSynonyms(value.synonyms, title);
 
-            message += `${i + 1}. ${formatToCode(english ?? romaji)}\n`;
-            if (hasEqualValue || synonyms) message += `${hasEqualValue ? formatToCode(title) : synonyms}\n`;
+            message += `${i + 1}. ${textToCode(english ?? romaji)}\n`;
+            if (hasEqualValue || synonyms) message += `${hasEqualValue ? textToCode(title) : synonyms}\n`;
             return staticButtons.choose(`${i + 1}`, value.id);
         }
     );
-    return { keyboard, message };
+    return { keyboard, message, result: true };
 }
 
 function createMediaGroup(photos: string[], caption: string, type: 'photo' | 'document' = 'photo'): any[] {

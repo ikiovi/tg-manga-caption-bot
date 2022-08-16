@@ -1,11 +1,12 @@
 import { Scenes, Context, NarrowedContext, Types } from 'telegraf'
+import { WaitStates } from '../utils/waitStates'
 
 interface MySceneSession extends Scenes.SceneSessionData {
-    waitFor: { [key: string]: boolean }
+    waitFor?: WaitStates
     files: string[]
     caption: string
     cached_id: number
-    mediaType : 'photo' | 'document'
+    mediaType: 'photo' | 'document'
 }
 
 type PhotoContext = NarrowedContext<MyContext, Types.MountMap['photo']>;

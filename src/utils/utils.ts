@@ -1,5 +1,7 @@
+import { createHash } from "crypto";
+import { ChatMember } from "telegraf/typings/core/types/typegram";
+import { Channel, Channels } from "../types/channels";
 import { MyContext } from "../types/context";
-import { AnilistMedia } from "../services/anilist/types";
 
 function parseInput(input: string): { command: string, value: number } {
     const data = input.split(':'),
@@ -8,48 +10,39 @@ function parseInput(input: string): { command: string, value: number } {
     return { command, value };
 }
 
-function parseCountry(country: string): string {
-    switch (country) {
-        case 'JP':
-            return 'Manga'
-        case 'KR':
-            return 'Manhua'
-        case 'CN':
-            return 'Manhwa'
-        default:
-            return 'Unknown'
+function hashUserId(id: number): string {
+    return createHash('md5').update(id.toString()).digest('hex');
+}
+
+function getAdminChannels(channels: Channel[], id: number): Channel[] {
+    const hid = hashUserId(id);
+    return channels.filter(channel => new Set(channel.admins).has(hid));
+}
+
+async function isAdmin(ctx: MyContext, channel_id: number, channels: Channels): Promise<boolean> {
+    if (!channels.has(channel_id)) return false;
+
+    const date = new Date();
+    const { next_update } = <Channel>channels.get(channel_id);
+
+    if (next_update && date < next_update) {
+        const member = await ctx.telegram.getChatMember(channel_id, ctx.from?.id ?? 0);
+        return member.status == 'administrator' || member.status == 'creator';
     }
+
+    let result = false;
+    const hash = (member: ChatMember) => {
+        const { id } = member.user;
+        if (ctx.from?.id ?? 0 == id) result = true;
+        return hashUserId(id);
+    };
+
+    const admins = (await ctx.telegram.getChatAdministrators(channel_id))
+        .filter(m => !m.user.is_bot)
+        .map(hash);
+    
+    channels.update(channel_id, admins);
+    return result;
 }
 
-function parseTags(tags: string[]): string {
-    return ' #' + tags.map(tag => tag.replace(/-| /g, '_')).join(' #');
-}
-
-function formatToCode(text: string): string {
-    return `<code>${text}</code>`
-}
-
-function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: boolean, synonyms?: string } {
-    let text: string = '';
-    const title_regex = RegExp(title.replace(' ', '|'));
-
-    for (let i = 0; i < synonyms.length; i++) {
-        if (synonyms[i] == title) return { hasEqualValue: true, synonyms: undefined };
-        if (synonyms[i].match(title_regex)) text += formatToCode(synonyms[i]) + '\n';
-    }
-    return { hasEqualValue: false, synonyms: text };
-}
-
-function getCaption(media: AnilistMedia): string {
-    const { id, title: { english, romaji }, genres, countryOfOrigin } = media;
-    return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${formatToCode(english || romaji)}`
-}
-
-async function isAdmin(ctx: MyContext, channel_id: number): Promise<boolean> {
-    if (!channel_id) return false;
-
-    let members = await ctx.telegram.getChatAdministrators(channel_id);
-    return members.findIndex(member => member.user.id == ctx.from?.id) != -1;
-}
-
-export { parseInput, parseCountry, formatToCode, parseSynonyms, parseTags, isAdmin, getCaption };
+export { parseInput, isAdmin, hashUserId, getAdminChannels };

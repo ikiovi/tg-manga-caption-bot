@@ -1,6 +1,8 @@
 import { Markup } from "telegraf";
-import { InlineKeyboardMarkup } from "telegraf/typings/core/types/typegram";
+import { Chat, InlineKeyboardMarkup } from "telegraf/typings/core/types/typegram";
 import { messages } from "../data";
+import { Channel } from "../types/channels";
+import { MyContext } from "../types/context";
 
 const staticButtons = {
     cancel: (text: string = messages.cancel) => commandInlineButton(text, 'cancel'),
@@ -11,7 +13,7 @@ const staticButtons = {
 };
 
 function inlineKeyboardFromArray<T>(array: T[], maxColumns: number, hasCancel: boolean, predicate: (value: T, index: number) => any): Markup.Markup<InlineKeyboardMarkup> {
-    const buttons: any[][] = new Array<any[]>(Math.floor(array.length / maxColumns)); // Fuck telegraf "Cant find type HideableIKBtn[][]"
+    const buttons: any[][] = new Array<any[]>(Math.floor(array.length / maxColumns)); // Cant find type HideableIKBtn[][]"
 
     for (let i = 0, r = 0; i < array.length; i++, r = Math.floor(i / maxColumns)) {
         const button = predicate(array[i], i);
@@ -33,9 +35,19 @@ function extendedInlineKeyboard(oneColumn: boolean, ...buttons: any[]): Markup.M
     return Markup.inlineKeyboard(buttons);
 }
 
+async function channelListKeyboard(ctx: MyContext, channels: Channel[]): Promise<any[]> {
+    return Promise.all(channels.map(
+        async ({ id }) => {
+            const { title } = await ctx.telegram.getChat(id) as Chat.SupergroupGetChat; // TODO: Cache titles to prevent ddos
+            return staticButtons.channel(title, id);
+        }
+    ));
+}
+
 export {
     inlineKeyboardFromArray,
     commandInlineButton,
     staticButtons,
-    extendedInlineKeyboard
+    extendedInlineKeyboard,
+    channelListKeyboard
 };
