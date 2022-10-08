@@ -65,7 +65,12 @@ bot.on('my_chat_member', async ctx => {
     console.log(chat.id);
 
 
-    const admins = (await ctx.telegram.getChatAdministrators(chat.id).catch(() => []))
+    const admins = (await ctx.telegram.getChatAdministrators(chat.id)
+        .catch(async () => {
+            const message = await ctx.reply('.');
+            ctx.deleteMessage(message.message_id);
+            return await ctx.telegram.getChatAdministrators(chat.id).catch(() => []);
+        }))
         .filter(m => !m.user.is_bot)
         .map(m => hashUserId(m.user.id));
     channels.update(chat.id, admins);
