@@ -1,16 +1,17 @@
 import 'dotenv/config';
 import { Scenes, session, Telegraf } from 'telegraf';
 import { channels, messages } from './data';
+import { moderateScene } from './handlers/moderate';
 import { postScene } from './handlers/post';
 import { MyContext } from './types/context';
 import { channelListKeyboard, commandInlineButton, extendedInlineKeyboard } from './utils/markup';
 import { getAdminChannels, hashUserId, isAdmin, parseInput } from './utils/utils';
 
 const token = process.env.TOKEN;
-if (!token) throw new Error('TOKEN must be provided!')
+if (!token) throw new Error('TOKEN must be provided!');
 
 const bot = new Telegraf<MyContext>(token);
-const stage = new Scenes.Stage<MyContext>([postScene]);
+const stage = new Scenes.Stage<MyContext>([postScene, moderateScene]);
 
 bot.catch(err => {
     const date = new Date();
@@ -30,6 +31,8 @@ bot.help(ctx => {
     });
 });
 
+bot.command('leave', ctx => ctx.scene.leave());
+
 bot.command('post', async ctx => {
     const buttons: any[] = await channelListKeyboard(ctx, getAdminChannels(channels.toArray(), ctx.from.id));
     const viewAllButton = commandInlineButton('View all', 'view_all');
@@ -39,19 +42,36 @@ bot.command('post', async ctx => {
     ctx.reply(messages.selectChannel, extendedInlineKeyboard(true, ...buttons, viewAllButton));
 });
 
+bot.command('moderate', ctx => {
+    ctx.deleteMessage();
+    const { text, entities } = ctx.message;
+    const command_length = (entities?.at(0)?.length ?? text.length) + 1;
+    const password_length = text.length - command_length;
+    if (!password_length) return ctx.reply(messages.invalidPassword, { parse_mode: 'HTML' });
+
+    const password = text.substring(command_length);
+    if (process.env.PASSWORD.length && password == process.env.PASSWORD)
+        return ctx.scene.enter(moderateScene.id);
+
+    return ctx.reply(messages.invalidPassword, { parse_mode: 'HTML' });
+});
+
 bot.on('my_chat_member', async ctx => {
     const { chat, new_chat_member: { status } } = ctx.update.my_chat_member;
 
     if (chat.type != 'channel') return;
     if (status == 'kicked' || status == 'left') return channels.delete(chat.id);
 
-    const admins = (await ctx.telegram.getChatAdministrators(chat.id))
+    console.log(chat.id);
+
+
+    const admins = (await ctx.telegram.getChatAdministrators(chat.id).catch(() => []))
         .filter(m => !m.user.is_bot)
         .map(m => hashUserId(m.user.id));
     channels.update(chat.id, admins);
-})
+});
 
-bot.action(/channel:/, async ctx => {
+bot.action(/^channel:/, async ctx => {
     ctx.answerCbQuery();
     const { value: id } = parseInput(ctx.match.input);
     if (!await isAdmin(ctx, id, channels)) return ctx.reply(messages.accessDenied);
@@ -61,10 +81,10 @@ bot.action(/channel:/, async ctx => {
 });
 
 bot.action('view_all', async ctx => {
-    const buttons: any[] = await channelListKeyboard(ctx, channels.toArray());
+    const buttons = await channelListKeyboard(ctx, channels.toArray());
     if (!buttons.length) return ctx.deleteMessage();
     ctx.editMessageReplyMarkup(extendedInlineKeyboard(true, ...buttons).reply_markup);
-})
+});
 
 bot.action('cancel', ctx => ctx.deleteMessage());
 

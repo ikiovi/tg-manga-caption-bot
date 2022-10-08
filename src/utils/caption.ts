@@ -1,25 +1,25 @@
-import { AnilistMedia } from "../services/anilist/types";
+import { AnilistMedia } from '../services/anilist/types';
 
 function getCaption(media: AnilistMedia): string {
     const { id, title: { english, romaji }, genres, countryOfOrigin } = media;
-    return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${textToCode(english || romaji)}`
+    return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${textToCode(english || romaji)}`;
 }
 
 function parseCountry(country: string): string {
     switch (country) {
         case 'JP':
-            return 'Manga'
+            return 'Manga';
         case 'KR':
-            return 'Manhua'
+            return 'Manhua';
         case 'CN':
-            return 'Manhwa'
+            return 'Manhwa';
         default:
-            return 'Unknown'
+            return 'Unknown';
     }
 }
 
 function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: boolean, synonyms?: string } {
-    let text: string = '';
+    let text = '';
     const title_regex = RegExp(title.replace(' ', '|'));
 
     for (let i = 0; i < synonyms.length; i++) {
@@ -34,7 +34,7 @@ function parseTags(tags: string[]): string {
 }
 
 function textToCode(text: string): string {
-    return `<code>${text}</code>`
+    return `<code>${text}</code>`;
 }
 
-export { getCaption, parseSynonyms, textToCode }
+export { getCaption, parseSynonyms, textToCode };

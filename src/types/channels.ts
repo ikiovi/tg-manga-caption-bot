@@ -1,12 +1,12 @@
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync, readFileSync } from 'fs';
 
-const update_cd = process.env.UPDATE_CD_MINUTES * 60000;
+const update_cd = (process.env?.UPDATE_CD_MINUTES ?? 10) * 60000;
 
 class Channels {
     private _channels: Map<number, Omit<Channel, 'id'>> = new Map<number, Omit<Channel, 'id'>>();
-    private _path?: string
+    private _path?: string;
 
-    public length: number = 0;
+    public length = 0;
 
     constructor(path?: string) {
         if (!path) return;
@@ -69,4 +69,4 @@ type Channel = {
     next_update?: Date
 }
 
-export { Channel, Channels, update_cd }
+export { Channel, Channels, update_cd };

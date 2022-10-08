@@ -1,5 +1,5 @@
-import { Scenes, Context, NarrowedContext, Types } from 'telegraf'
-import { WaitStates } from '../utils/waitStates'
+import { Scenes, Context, NarrowedContext, Types } from 'telegraf';
+import { WaitStates } from '../utils/waitStates';
 
 interface MySceneSession extends Scenes.SceneSessionData {
     waitFor?: WaitStates
@@ -16,4 +16,4 @@ interface MyContext extends Context {
     scene: Scenes.SceneContextScene<MyContext, MySceneSession>
 }
 
-export { MyContext, PhotoContext, DocumentContext }
+export { MyContext, PhotoContext, DocumentContext };

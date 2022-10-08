@@ -1,0 +1,24 @@
+{
+    "root": true,
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/eslint-recommended",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "rules":{
+        "camelcase":"off",
+        "dot-notation":"warn",
+        "no-extra-semi":"warn",
+        "no-extra-boolean-cast":"off",
+        "@typescript-eslint/no-non-null-assertion":"off",
+        "no-var":"error",
+        "prefer-const":"warn",
+        "comma-style":["warn", "last"],
+        "semi": ["error", "always"],
+        "quotes": ["error", "single"]
+    }
+  }

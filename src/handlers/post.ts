@@ -5,7 +5,7 @@ import { SearchAnilistMedia } from '../services/anilist/types';
 import { getByID, searchByName } from '../services/anilist/api';
 import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
 import { DocumentContext, MyContext, PhotoContext } from '../types/context';
-import { getState, setState, WaitStates } from '../utils/waitStates';
+import { checkStates, setState, WaitStates } from '../utils/waitStates';
 import { isAdmin, parseInput } from '../utils/utils';
 import { getCaption, parseSynonyms, textToCode } from '../utils/caption';
 import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
@@ -18,10 +18,9 @@ postScene.enter(ctx => {
 });
 
 postScene.command('cancel', cancelHandler);
-postScene.command('leave', ctx => ctx.scene.leave());
 
 postScene.on('text', ctx => {
-    if (!getState(ctx, WaitStates.Title)) return;
+    if (!checkStates(ctx, WaitStates.Title)) return;
     const title = ctx.message.text;
     //TODO: possible ddos threat
     searchByName(title, ({ data: { Page: { media } } }) => {
@@ -36,11 +35,11 @@ postScene.on('photo', photoHandler);
 
 postScene.action(/choose/, ctx => {
     ctx.answerCbQuery();
-    if (!(getState(ctx, WaitStates.Title) || getState(ctx, WaitStates.Choose)) || !ctx.scene.session.files.length) return;
+    if (!checkStates(ctx, WaitStates.Title, WaitStates.Choose) || !ctx.scene.session.files.length) return;
     const { value: id } = parseInput(ctx.match.input);
 
     getByID(id, ({ data: { Media } }) => {
-        ctx.scene.session.waitFor = undefined;
+        setState(ctx, WaitStates.Accept);
 
         ctx.scene.session.cached_id = id;
         const caption = ctx.scene.session.caption = getCaption(Media);
@@ -55,19 +54,19 @@ postScene.action(/choose/, ctx => {
 
 postScene.action('media_collected', ctx => {
     ctx.answerCbQuery();
-    if (getState(ctx, WaitStates.Media) && ctx.scene.session.files.length) {
+    if (checkStates(ctx, WaitStates.Media) && ctx.scene.session.files.length) {
         setState(ctx, WaitStates.Title);
         ctx.editMessageReplyMarkup(undefined);
         ctx.reply(messages.waitTitle, extendedInlineKeyboard(true, staticButtons.cancel('Back')));
     }
-})
+});
 
 postScene.action(/accept/, async ctx => {
     ctx.answerCbQuery();
 
     const { channel_id } = (<{ channel_id: number }>ctx.scene.state);
     const { files, mediaType: type, cached_id, caption } = ctx.scene.session;
-    let error = !await isAdmin(ctx, channel_id, channels) ? messages.accessDenied : !cached_id || !caption ? messages.captionCacheError : undefined;
+    const error = !await isAdmin(ctx, channel_id, channels) ? messages.accessDenied : !cached_id || !caption ? messages.captionCacheError : undefined;
 
     if (error) {
         ctx.editMessageReplyMarkup(undefined);
@@ -87,7 +86,7 @@ postScene.action(/accept/, async ctx => {
     }
 
     function sendMediaGroup(files: string[]) {
-        ctx.telegram.sendMediaGroup(channel_id, createMediaGroup(files, caption, type))
+        ctx.telegram.sendMediaGroup(channel_id, createMediaGroup(files, caption, type));
     }
 
     ctx.editMessageReplyMarkup(
@@ -99,7 +98,7 @@ postScene.action(/accept/, async ctx => {
 postScene.action('cancel', cancelHandler);
 
 function photoHandler(ctx: PhotoContext | DocumentContext) {
-    if (!getState(ctx, WaitStates.Media)) return;
+    if (!checkStates(ctx, WaitStates.Media)) return;
 
     const photo_id: string | undefined = (<PhotoContext>ctx).message?.photo?.shift()?.file_id;
     const document_id: string | undefined = (<DocumentContext>ctx).message?.document?.file_id;
@@ -108,7 +107,7 @@ function photoHandler(ctx: PhotoContext | DocumentContext) {
     const mediaType = ctx.scene.session.mediaType ??= type;
 
     if (type == mediaType) ctx.scene.session.files.push(photo_id ?? document_id);
-    else ctx.reply(`Current media type: ${type}\nExpected media type: ${mediaType}`)
+    else ctx.reply(`Current media type: ${type}\nExpected media type: ${mediaType}`);
 }
 
 function waitForMedia(ctx: MyContext) {
@@ -124,11 +123,15 @@ function waitForMedia(ctx: MyContext) {
 
 function cancelHandler(ctx: MyContext) {
     ctx.deleteMessage();
-    const { length } = ctx.scene.session.files;
+    const { waitFor } = ctx.scene.session;
+    // const { length } = ctx.scene.session.files;
 
-    if (getState(ctx, WaitStates.Title)) waitForMedia(ctx);
-    else if (getState(ctx, WaitStates.Choose) || length) setState(ctx, WaitStates.Title);
+    
+    if (checkStates(ctx, WaitStates.Title)) waitForMedia(ctx);
+    else if(waitFor !== undefined && waitFor != 0) setState(ctx, waitFor - 1);
     else ctx.scene.reenter();
+    // else if (getState(ctx, WaitStates.Choose)) setState(ctx, WaitStates.Title);
+    // else ctx.scene.reenter();
 }
 
 function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Markup.Markup<InlineKeyboardMarkup>, message: string, result: boolean } {

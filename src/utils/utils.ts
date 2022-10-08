@@ -1,7 +1,7 @@
-import { createHash } from "crypto";
-import { ChatMember } from "telegraf/typings/core/types/typegram";
-import { Channel, Channels } from "../types/channels";
-import { MyContext } from "../types/context";
+import { createHash } from 'crypto';
+import { ChatMember } from 'telegraf/typings/core/types/typegram';
+import { Channel, Channels } from '../types/channels';
+import { MyContext } from '../types/context';
 
 function parseInput(input: string): { command: string, value: number } {
     const data = input.split(':'),

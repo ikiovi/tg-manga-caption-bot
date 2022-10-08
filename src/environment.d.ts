@@ -4,8 +4,9 @@ declare global {
             TOKEN: string;
             CHANNELS: string;
             UPDATE_CD_MINUTES: number;
+            PASSWORD: string;
         }
     }
 }
 
-export { }
+export { };
