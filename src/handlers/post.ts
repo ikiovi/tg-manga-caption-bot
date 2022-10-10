@@ -17,6 +17,7 @@ postScene.enter(ctx => {
     waitForMedia(ctx);
 });
 
+postScene.command('leave', ctx => ctx.scene.leave());
 postScene.command('cancel', cancelHandler);
 
 postScene.on('text', ctx => {
