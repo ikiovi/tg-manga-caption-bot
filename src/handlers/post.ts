@@ -1,14 +1,14 @@
 import { channels, messages } from '../data';
-import { Markup, Scenes } from 'telegraf';
+import { Scenes } from 'telegraf';
 import { ExtraPhoto } from 'telegraf/typings/telegram-types';
 import { SearchAnilistMedia } from '../services/anilist/types';
 import { getByID, searchByName } from '../services/anilist/api';
-import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
 import { DocumentContext, MyContext, PhotoContext } from '../types/context';
 import { checkStates, setState, WaitStates } from '../utils/waitStates';
 import { isAdmin, parseInput } from '../utils/utils';
 import { getCaption, parseSynonyms, textToCode } from '../utils/caption';
 import { commandInlineButton, extendedInlineKeyboard, inlineKeyboardFromArray, staticButtons } from '../utils/markup';
+import { TelegramInlineKeyboard, TelegramMediaGroup, TelegramOnlyPhotoGroup } from '../types/telegram';
 
 export const postScene = new Scenes.BaseScene<MyContext>('POST_SCENE');
 
@@ -23,7 +23,8 @@ postScene.command('cancel', cancelHandler);
 postScene.on('text', ctx => {
     if (!checkStates(ctx, WaitStates.Title)) return;
     const title = ctx.message.text;
-    //TODO: possible ddos threat
+    //! possible ddos threat
+    //TODO: Add throttling
     searchByName(title, ({ data: { Page: { media } } }) => {
         const { keyboard, message, result } = parseMedia(media, title);
         ctx.replyWithHTML(message, keyboard);
@@ -87,7 +88,7 @@ postScene.action(/accept/, async ctx => {
     }
 
     function sendMediaGroup(files: string[]) {
-        ctx.telegram.sendMediaGroup(channel_id, createMediaGroup(files, caption, type));
+        ctx.telegram.sendMediaGroup(channel_id, createMediaGroup(files, caption, type) as TelegramMediaGroup);
     }
 
     ctx.editMessageReplyMarkup(
@@ -135,7 +136,7 @@ function cancelHandler(ctx: MyContext) {
     // else ctx.scene.reenter();
 }
 
-function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Markup.Markup<InlineKeyboardMarkup>, message: string, result: boolean } {
+function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: TelegramInlineKeyboard, message: string, result: boolean } {
     if (!media.length) return { keyboard: undefined, message: messages.titleNotFound, result: false };
 
     let message = '';
@@ -152,7 +153,7 @@ function parseMedia(media: SearchAnilistMedia[], title: string): { keyboard?: Ma
     return { keyboard, message, result: true };
 }
 
-function createMediaGroup(photos: string[], caption: string, type: 'photo' | 'document' = 'photo'): any[] {
+function createMediaGroup(photos: string[], caption: string, type: 'photo' | 'document' = 'photo'): TelegramOnlyPhotoGroup{
     return photos.map((photo_id, i) => {
         return {
             type,

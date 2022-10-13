@@ -34,7 +34,7 @@ bot.help(ctx => {
 bot.command('leave', ctx => ctx.scene.leave());
 
 bot.command('post', async ctx => {
-    const buttons: any[] = await channelListKeyboard(ctx, getAdminChannels(channels.toArray(), ctx.from.id));
+    const buttons = await channelListKeyboard(ctx, getAdminChannels(channels.toArray(), ctx.from.id));
     const viewAllButton = commandInlineButton('View all', 'view_all');
 
     if (!buttons.length && channels.length > 0) return ctx.reply(messages.emptyUserChannels, extendedInlineKeyboard(true, viewAllButton));
@@ -62,8 +62,7 @@ bot.on('my_chat_member', async ctx => {
     if (chat.type != 'channel') return;
     if (status == 'kicked' || status == 'left') return channels.delete(chat.id);
 
-    console.log(chat.id);
-
+    // console.debug(chat.id);
 
     const admins = (await ctx.telegram.getChatAdministrators(chat.id)
         .catch(async () => {

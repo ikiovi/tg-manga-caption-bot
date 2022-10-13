@@ -1,4 +1,4 @@
-export { AnilistSearchData, AnilistData, AnilistMedia, SearchAnilistMedia }
+export { AnilistSearchData, AnilistData, AnilistMedia, SearchAnilistMedia };
 
 type AnilistMedia = {
     id: number

@@ -1,7 +1,8 @@
-import { Markup, Scenes } from 'telegraf';
-import { InlineKeyboardMarkup } from 'telegraf/typings/core/types/typegram';
+import { Scenes } from 'telegraf';
 import { channels, messages } from '../data';
 import { MyContext } from '../types/context';
+import { HideableIKBtn } from '../types/markup';
+import { TelegramInlineKeyboard } from '../types/telegram';
 import { channelListKeyboard, extendedInlineKeyboard, staticButtons } from '../utils/markup';
 import { parseInput } from '../utils/utils';
 
@@ -27,23 +28,27 @@ moderateScene.action(/^delete_channel:/, async ctx => {
     else ctx.editMessageReplyMarkup(keyboard.reply_markup);
 });
 
-async function getKeyboard(ctx: MyContext, exclude?: number): Promise<Markup.Markup<InlineKeyboardMarkup>> {
-    let cache: Map<number, any> = (ctx.scene.state as any).buttons;
+async function getKeyboard(ctx: MyContext, exclude?: number): Promise<TelegramInlineKeyboard> {
+    let cache = (ctx.scene.state as StateChache).buttons;
 
     if (!cache || cache.size != channels.length) {
         const buttons = await channelListKeyboard(ctx, channels.toArray(), staticButtons.delete_channel);
 
-        cache = new Map<number, any>(channels.toArray().map(
+        cache = new Map<number, HideableIKBtn>(channels.toArray().map(
             (channel, i) => {
                 return [channel.id, buttons[i]];
             }
         ));
-        (<any>ctx.scene.state).buttons = cache;
+        (<StateChache>ctx.scene.state).buttons = cache;
     }
     if (exclude) {
         cache.delete(exclude);
-        (<any>ctx.scene.state).buttons = cache;
+        (<StateChache>ctx.scene.state).buttons = cache;
     }
 
     return extendedInlineKeyboard(true, ...cache.values());
+}
+
+type StateChache = {
+    buttons?: Map<number, HideableIKBtn>;
 }

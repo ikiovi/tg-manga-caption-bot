@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import { Channels } from './types/channels';
 
-let messages = { 
+const messages = { 
     post: 'Post',
     done: 'Done',
     retry: 'Again',
