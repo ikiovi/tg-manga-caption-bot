@@ -1,17 +1,11 @@
-import 'dotenv/config';
-import { Scenes, session, Telegraf } from 'telegraf';
-import { channels, messages } from './data';
-import { moderateScene } from './handlers/moderate';
-import { postScene } from './handlers/post';
-import { MyContext } from './types/context';
-import { channelListKeyboard, commandInlineButton, extendedInlineKeyboard } from './utils/markup';
-import { getAdminChannels, hashUserId, isAdmin, parseInput } from './utils/utils';
+import 'https://deno.land/x/dotenv/load.ts';
+import { Bot, session, Context } from './deps.ts';
+import { conversations, ConversationFlavor } from './deps.ts';
 
-const token = process.env.TOKEN;
+const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
 
-const bot = new Telegraf<MyContext>(token);
-const stage = new Scenes.Stage<MyContext>([postScene, moderateScene]);
+const bot = new Bot<Context & ConversationFlavor>(token);
 
 bot.catch(err => {
     const date = new Date();
@@ -20,79 +14,26 @@ bot.catch(err => {
     console.error(dateString, `${name}: ${message}`);
 });
 
-bot.use(session());
-bot.use(stage.middleware());
+bot.use(
+    session({
+        initial() {
+            return {};
+        }
+    })
+);
+bot.use(conversations());
 
-bot.start(ctx => ctx.reply(messages.start));
-bot.help(ctx => {
-    ctx.telegram.getMyCommands().then(commands => {
-        const text = commands.map(({ command, description }) => `/${command} - ${description}`).join('\n');
-        ctx.reply(text);
-    });
+// ...
+
+bot.command('help', async ctx => {
+    const commands = await ctx.api.getMyCommands();
+    const text = !commands.length ? '_' : commands.map(({ command, description }) => `/${command} - ${description}`).join('\n');
+    ctx.reply(text);
 });
 
-bot.command('leave', ctx => ctx.scene.leave());
+bot.command('leave', ctx => ctx.conversation.exit());
 
-bot.command('post', async ctx => {
-    const buttons = await channelListKeyboard(ctx, getAdminChannels(channels.toArray(), ctx.from.id));
-    const viewAllButton = commandInlineButton('View all', 'view_all');
+bot.start();
 
-    if (!buttons.length && channels.length > 0) return ctx.reply(messages.emptyUserChannels, extendedInlineKeyboard(true, viewAllButton));
-    else if (!buttons.length) return ctx.reply(messages.emptyChannels);
-    ctx.reply(messages.selectChannel, extendedInlineKeyboard(true, ...buttons, viewAllButton));
-});
-
-bot.command('moderate', ctx => {
-    ctx.deleteMessage();
-    const { text, entities } = ctx.message;
-    const command_length = (entities?.at(0)?.length ?? text.length) + 1;
-    const password_length = text.length - command_length;
-    if (!password_length) return ctx.reply(messages.invalidPassword, { parse_mode: 'HTML' });
-
-    const password = text.substring(command_length);
-    if (process.env.PASSWORD.length && password == process.env.PASSWORD)
-        return ctx.scene.enter(moderateScene.id);
-
-    return ctx.reply(messages.invalidPassword, { parse_mode: 'HTML' });
-});
-
-bot.on('my_chat_member', async ctx => {
-    const { chat, new_chat_member: { status } } = ctx.update.my_chat_member;
-
-    if (chat.type != 'channel') return;
-    if (status == 'kicked' || status == 'left') return channels.delete(chat.id);
-
-    // console.debug(chat.id);
-
-    const admins = (await ctx.telegram.getChatAdministrators(chat.id)
-        .catch(async () => {
-            const message = await ctx.reply('.');
-            ctx.deleteMessage(message.message_id);
-            return await ctx.telegram.getChatAdministrators(chat.id).catch(() => []);
-        }))
-        .filter(m => !m.user.is_bot)
-        .map(m => hashUserId(m.user.id));
-    channels.update(chat.id, admins);
-});
-
-bot.action(/^channel:/, async ctx => {
-    ctx.answerCbQuery();
-    const { value: id } = parseInput(ctx.match.input);
-    if (!await isAdmin(ctx, id, channels)) return ctx.reply(messages.accessDenied);
-
-    ctx.scene.enter(postScene.id, { channel_id: id });
-    ctx.deleteMessage();
-});
-
-bot.action('view_all', async ctx => {
-    const buttons = await channelListKeyboard(ctx, channels.toArray());
-    if (!buttons.length) return ctx.deleteMessage();
-    ctx.editMessageReplyMarkup(extendedInlineKeyboard(true, ...buttons).reply_markup);
-});
-
-bot.action('cancel', ctx => ctx.deleteMessage());
-
-bot.launch();
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+Deno.addSignalListener('SIGINT', () => bot.stop());
+Deno.addSignalListener('SIGBREAK', () => bot.stop());

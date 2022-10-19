@@ -1,12 +1,10 @@
-export { AnilistSearchData, AnilistData, AnilistMedia, SearchAnilistMedia };
-
 type AnilistMedia = {
     id: number
     title: {
         romaji: string,
-        english: string
+        english?: string
     }
-    coverImage:{
+    coverImage: {
         extraLarge: string
     }
     synonyms: string[]
@@ -15,21 +13,23 @@ type AnilistMedia = {
     countryOfOrigin: 'JP' | 'CN' | 'KR' | string
 }
 
-type SearchAnilistMedia = Omit<AnilistMedia, 'geners' | 'siteUrl' | 'coverImage' | 'countryOfOrigin'>;
+type AnilistSearchMedia = Omit<AnilistMedia, 'genres' | 'siteUrl' | 'coverImage' | 'countryOfOrigin'>;
 
 type AnilistSearchData = {
-    data : {
+    data: {
         pageInfo:{
             total: number
         }
         Page: {
-            media: SearchAnilistMedia[]
+            media: AnilistSearchMedia[]
         }
     }
 }
 
 type AnilistData = {
-    data:{
-        Media : AnilistMedia
+    data: {
+        Media: AnilistMedia
     }
 }
+
+export { AnilistSearchData, AnilistData, AnilistMedia, AnilistSearchMedia };

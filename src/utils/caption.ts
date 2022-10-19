@@ -1,11 +1,15 @@
-import { AnilistMedia } from '../services/anilist/types';
+import { MangaType, CaptionInfo } from '../types/manga.ts';
 
-function getCaption(media: AnilistMedia): string {
-    const { id, title: { english, romaji }, genres, countryOfOrigin } = media;
-    return `${parseTags([`id${id}`, parseCountry(countryOfOrigin), ...genres])}\n${textToCode(english || romaji)}`;
+function getCaption(info: CaptionInfo): string {
+    const { id, genres, type, source: { tag } } = info;
+    const tags = parseTags([`${tag}${id}`, type, ...genres]);
+    const title = typeof info.title === 'string' 
+                ? info.title : info.title.filter(t => t !== undefined)[0];
+
+    return `${tags}\n${textToCode(title)}`;
 }
 
-function parseCountry(country: string): string {
+function parseCountry(country: string): MangaType {
     switch (country) {
         case 'JP':
             return 'Manga';
@@ -34,7 +38,7 @@ function parseTags(tags: string[]): string {
 }
 
 function textToCode(text: string): string {
-    return `<code>${text}</code>`;
+    return `<pre>${text}</pre>`;
 }
 
-export { getCaption, parseSynonyms, textToCode };
+export { parseSynonyms, textToCode, getCaption, parseCountry };

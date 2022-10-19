@@ -1,2 +1,2 @@
 .gitignore
-.env_example
+.env.example
