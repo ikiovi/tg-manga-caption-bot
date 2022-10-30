@@ -131,3 +131,4 @@ dist
 channels.json
 .vscode/
 package*.json
+/db

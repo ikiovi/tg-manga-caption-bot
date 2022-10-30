@@ -1,10 +1,11 @@
-import { MangaMedia, MangaMediaSource, MangaSearchMedia, PreviewType, SourceType } from '../../../types/manga.ts';
 import { getCaption } from '../../../utils/caption.ts';
 import { handleError, handleResponse } from '../../../utils/utils.ts';
 import { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia } from './types.ts';
+import { MangaMedia, MangaMediaSource, MangaSearchMedia, PreviewType, SourceType } from '../../../types/manga.ts';
 
 export class MangaUpdates implements MangaMediaSource {
     readonly tag = 'MU';
+    readonly link = 'https://mangaupdates.com';
     readonly api = 'https://api.mangaupdates.com/v1/';
     readonly previewType: PreviewType = 'Cover';
     readonly requestOptions: RequestInit = {
@@ -16,8 +17,8 @@ export class MangaUpdates implements MangaMediaSource {
 
     private cache: Map<number, MangaMedia>;
 
-    constructor() {
-        this.cache = new Map<number, MangaMedia>();
+    constructor(cache?: Map<number, MangaMedia>) {
+        this.cache = cache ?? new Map<number, MangaMedia>();
         setInterval(this.cache.clear, (Deno.env.get('CACHE_MINUTES') ?? 20) as number * 60000);
     }
 

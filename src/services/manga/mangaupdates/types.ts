@@ -1,26 +1,26 @@
-import { MangaType } from '../../../types/manga';
+import { MangaType } from '../../../types/manga.ts';
 
 type MangaUpdatesSearchMedia = {
-    record: MangaUpdatesMedia;
-    // hit_title: string;
+    record: MangaUpdatesMedia
+    // hit_title: string
 }
 
 type MangaUpdatesMedia = {
-    series_id: number;
-    title: string;
-    url: string;
+    series_id: number
+    title: string
+    url: string
     type: MangaType;
-    genres: string[];
+    genres: string[]
     image: {
-        url:{
+        url: {
             original: string
         }
     }
 }
 
 type MangaUpdatesData = {
-    total_hits: number;
-    results: MangaUpdatesSearchMedia[];
+    total_hits: number
+    results: MangaUpdatesSearchMedia[]
 }
 
-export { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia };
+export type { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia };

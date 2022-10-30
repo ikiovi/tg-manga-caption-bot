@@ -1,12 +1,12 @@
 import { resolve, join } from '../../../deps.ts';
-import { MangaMediaSource, MangaMedia, PreviewType, SourceType, MangaSearchMedia } from '../../../types/manga.ts';
 import { getCaption, parseCountry } from '../../../utils/caption.ts';
 import { handleError, handleResponse } from '../../../utils/utils.ts';
 import { AnilistData, AnilistMedia, AnilistSearchData, AnilistSearchMedia } from './types.ts';
+import { MangaMediaSource, PreviewType, MangaSearchMedia, MangaMedia, SourceType } from '../../../types/manga.ts';
 
 export class Anilist implements MangaMediaSource {
-
-    readonly tag = 'al';
+    readonly tag = 'AL';
+    readonly link = 'https://anilist.co';
     readonly api = 'https://graphql.anilist.co';
     readonly previewType: PreviewType = 'Link';
     readonly requestOptions: RequestInit = {
@@ -33,7 +33,7 @@ export class Anilist implements MangaMediaSource {
         });
     }
 
-    private callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number }, callback: (data: T) => void) {
+    private callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number; }, callback: (data: T) => void) {
         const options = {
             ...this.requestOptions,
             body: JSON.stringify({

@@ -1,10 +1,10 @@
-import { MangaType, CaptionInfo } from '../types/manga.ts';
+import { CaptionInfo, MangaType } from '../types/manga.ts';
 
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
     const tags = parseTags([`${tag}${id}`, type, ...genres]);
-    const title = typeof info.title === 'string' 
-                ? info.title : info.title.filter(t => t !== undefined)[0];
+    const title = typeof info.title === 'string'
+        ? info.title : info.title.filter(t => t !== undefined)[0];
 
     return `${tags}\n${textToCode(title)}`;
 }

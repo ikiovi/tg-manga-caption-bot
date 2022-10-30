@@ -1,29 +1,10 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": true,
     "noImplicitAny": true
   },
   "include": ["src/"],
-  "lint": {
-    "files": {
-      "include": ["src/"]
-    },
-    "rules": {
-      "tags": ["recommended"],
-      "exclude": ["camelcase", "no-extra-boolean-cast"]
-    }
-  },
-  "fmt": {
-    "files": {
-      "include": ["src/"]
-    },
-    "options": {
-      "singleQuote": true,
-      "useTabs": true
-    }
-  },
   "tasks": {
-    "start":"deno run --allow-env --allow-read --allow-net --allow-write src/index.ts"
+    "start":"deno run --allow-env --allow-read --allow-net --allow-write src/bot.ts"
   }
 }

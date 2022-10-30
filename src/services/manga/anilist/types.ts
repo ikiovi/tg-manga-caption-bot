@@ -1,7 +1,7 @@
 type AnilistMedia = {
     id: number
     title: {
-        romaji: string,
+        romaji: string
         english?: string
     }
     coverImage: {
@@ -32,4 +32,4 @@ type AnilistData = {
     }
 }
 
-export { AnilistSearchData, AnilistData, AnilistMedia, AnilistSearchMedia };
+export type { AnilistSearchData, AnilistData, AnilistMedia, AnilistSearchMedia };
