@@ -91,4 +91,3 @@ bot.catch(err => {
 bot.start();
 
 Deno.addSignalListener('SIGINT', () => bot.stop());
-Deno.addSignalListener('SIGBREAK', () => bot.stop());

@@ -2,7 +2,7 @@ From denoland/deno:alpine
 
 WORKDIR /app
 
-COPY src/deps.ts src/.
+COPY src/deps.ts src/deps.ts
 RUN deno cache src/deps.ts
 
 ADD . .
