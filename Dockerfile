@@ -8,4 +8,4 @@ RUN deno cache src/deps.ts
 ADD . .
 RUN deno cache src/bot.ts
 
-RUN deno task start
+CMD ["task", "start"]
