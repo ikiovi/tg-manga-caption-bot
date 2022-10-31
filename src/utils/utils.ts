@@ -5,15 +5,22 @@ function hashUserId(id: number): ArrayBuffer {
     return crypto.subtle.digestSync('MD5', new Uint32Array().fill(id));
 }
 
-function getRegexFromSources(arr: MangaMediaSource[]) {
-    return new RegExp(`^(?<tag>${arr.map(s => s.tag).join('|')})(?<id>\\d*)$`);
+function getRegexFromSources(arr: MangaMediaSource[], optional?: string) {
+    return new RegExp('^' + (optional ?? '') + `(?<tag>${arr.map(s => s.tag).join('|')})(?<id>\\d*)$`);
 }
 
 function safeAwait<T>(waitFor: Promise<T>, options?: { timeout: number }): Promise<T | undefined> {
     return Promise.race<T | undefined>([
-        waitFor, 
+        waitFor,
         new Promise(resolve => setTimeout(resolve, options?.timeout ?? 100))
     ]);
+}
+
+function getFromMatch(match: string | RegExpMatchArray | undefined) {
+    if (!match) return;
+    match = match as RegExpMatchArray;
+    const groups = match.groups as Record<string, string>;
+    return groups;
 }
 
 //#region Handlers
@@ -28,4 +35,4 @@ function handleError(error: unknown) {
 }
 //#endregion
 
-export { hashUserId, handleResponse, handleError, getRegexFromSources, safeAwait };
+export { hashUserId, handleResponse, handleError, getRegexFromSources, getFromMatch };

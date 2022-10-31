@@ -14,17 +14,19 @@ type CaptionInfo = MangaSearchMedia & {
     type: MangaType
 }
 
-interface MangaMediaSource {
+interface SourceType {
     readonly tag: string
+    readonly previewType: PreviewType
+}
+
+interface MangaMediaSource extends SourceType {
     readonly link: string
     readonly api: string
-    readonly previewType: PreviewType
 
     searchByTitle(search: string, callback: (result?: MangaSearchMedia[]) => void): void
     getById(id: number, callback: (result?: MangaMedia) => void): void
 }
 
-type SourceType = Pick<MangaMediaSource, 'tag' | 'previewType'>;
 type PreviewType = 'Cover' | 'Link';
 type MangaType =
     | 'Manga' | 'Manhwa' | 'Manhua' | 'Novel' | 'OEL'

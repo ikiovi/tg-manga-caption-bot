@@ -34,7 +34,7 @@ export class MangaUpdates implements MangaMediaSource {
 
         this.callApi<MangaUpdatesData>(path, options,
             ({ results }) => {
-                const result = results.map(this.parseMangaUpdatesSearchMedia);
+                const result = results.map(m => this.parseMangaUpdatesSearchMedia(m, this));
 
                 for (const { record } of results) {
                     const media = this.parseMangaUpdatesMedia(record);
@@ -68,13 +68,14 @@ export class MangaUpdates implements MangaMediaSource {
             .catch(handleError);
     }
 
-    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): MangaMedia {
+    private parseMangaUpdatesMedia(media: MangaUpdatesMedia, source: SourceType = this): MangaMedia {
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,
             link,
             title,
-            source: <SourceType>this,
+            source,
+            genres: genres.map(g => g.genre),
             image: image.url.original
         };
 
@@ -82,13 +83,12 @@ export class MangaUpdates implements MangaMediaSource {
             ...result,
             caption: getCaption({
                 type,
-                genres,
                 ...result,
             })
         };
     }
 
-    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia): MangaSearchMedia {
-        return this.parseMangaUpdatesMedia(media.record);
+    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia, source: SourceType = this): MangaSearchMedia {
+        return this.parseMangaUpdatesMedia(media.record, source);
     }
 }

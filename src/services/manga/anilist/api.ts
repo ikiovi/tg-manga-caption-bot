@@ -22,7 +22,7 @@ export class Anilist implements MangaMediaSource {
     searchByTitle(search: string, callback: (result?: MangaSearchMedia[] | undefined) => void): void {
         const query = Deno.readTextFileSync(join(this.queries, 'search.gql'));
         this.callApi<AnilistSearchData>(query, { search }, ({ data: { Page: { media } } }) => {
-            callback(media.map(this.parseAnilistSearchMedia));
+            callback(media.map(m => this.parseAnilistSearchMedia(m, this)));
         });
     }
 
@@ -47,9 +47,9 @@ export class Anilist implements MangaMediaSource {
             .catch(handleError);
     }
 
-    private parseAnilistMedia(media: AnilistMedia): MangaMedia {
+    private parseAnilistMedia(media: AnilistMedia, source: SourceType = this): MangaMedia {
         const { siteUrl: link, genres, countryOfOrigin } = media;
-        const base = this.parseAnilistSearchMedia(media);
+        const base = this.parseAnilistSearchMedia(media, source);
         return {
             ...base,
             link,
@@ -61,11 +61,11 @@ export class Anilist implements MangaMediaSource {
         };
     }
 
-    private parseAnilistSearchMedia(media: AnilistSearchMedia): MangaSearchMedia {
+    private parseAnilistSearchMedia(media: AnilistSearchMedia, source: SourceType = this): MangaSearchMedia {
         const { id, title, synonyms } = media;
         return {
             id,
-            source: <SourceType>this,
+            source,
             title: [...Object.values(title), ...synonyms],
         };
     }

@@ -1,17 +1,17 @@
 import { Composer, InputMediaDocument, InputMediaPhoto, Message } from '../deps.ts';
-import { MyContext } from '../types/context.ts';
+import { MediaContext } from '../types/context.ts';
 
-export const media = new Composer<MyContext>();
+export const media = new Composer<MediaContext>().chatType('channel');
 
-media.on('channel_post:photo', ctx => {
+media.on(':photo', ctx => {
     setupCatch(ctx, ctx.channelPost.photo[0]);
 });
 
-media.on('channel_post:document', ctx => {
+media.on(':document', ctx => {
     setupCatch(ctx, ctx.channelPost.document);
 });
 
-function setupCatch<T extends MyContext & { channelPost: Message }>(ctx: T, file?: { file_id: string }) {
+function setupCatch<T extends MediaContext & { channelPost: Message }>(ctx: T, file?: { file_id: string }) {
     const { media_group_id, message_id, caption } = ctx.channelPost;
     if (!file || (!caption && !media_group_id)) return;
     const { file_id } = file;
@@ -36,7 +36,7 @@ function setupCatch<T extends MyContext & { channelPost: Message }>(ctx: T, file
     }
 }
 
-export function process(ctx: MyContext) {
+export function process(ctx: MediaContext) {
     if (!ctx.channelPost) return;
     const { tag, id } = ctx.session.current.match ?? {};
     if (!tag || !id) return;
@@ -54,7 +54,7 @@ export function process(ctx: MyContext) {
     });
 }
 
-async function processSingle<T extends MyContext>(ctx: T, params: { message_id: number, caption: string, isDocument: boolean }) {
+async function processSingle(ctx: MediaContext, params: { message_id: number, caption: string, isDocument: boolean }) {
     const { message_id, isDocument, caption } = params;
     const { id, media } = ctx.session.current;
     const file_id = media as string;
@@ -66,7 +66,7 @@ async function processSingle<T extends MyContext>(ctx: T, params: { message_id: 
     await ctx.replyWithPhoto(file_id, options);
 }
 
-async function processGroup<T extends MyContext>(ctx: T, params: { media_group_id: string, caption: string, isDocument: boolean, chat_id: number }) {
+async function processGroup(ctx: MediaContext, params: { media_group_id: string, caption: string, isDocument: boolean, chat_id: number }) {
     const { media_group_id, caption, isDocument, chat_id } = params;
     const { current } = ctx.session;
     const mediaGroup = current.media as Record<number, string>;

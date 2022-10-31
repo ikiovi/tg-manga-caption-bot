@@ -10,7 +10,7 @@ type MangaUpdatesMedia = {
     title: string
     url: string
     type: MangaType;
-    genres: string[]
+    genres: { genre: string }[]
     image: {
         url: {
             original: string

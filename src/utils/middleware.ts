@@ -2,11 +2,15 @@ import { Context, NextFunction } from '../deps.ts';
 
 export function onlyAdmin<T extends Context>(errorHandler?: (ctx: T) => unknown) {
     return async (ctx: T, next: NextFunction) => {
-        if (!ctx.chat || !ctx.from?.id) return;
+        const { chat, from } = ctx;
+        if (!chat) return;
 
-        const isAdmin = ['channel', 'private'].includes(ctx.chat.type) || ctx.from?.username === 'GroupAnonymousBot';
-        const chatMember = ctx.getChatMember(ctx.from.id);
-        if (isAdmin || ['creator', 'administrator'].includes((await chatMember).status)) return next();
+        if (['channel', 'private'].includes(chat.type) || from?.username === 'GroupAnonymousBot') return next();
+        
+        if (!from?.id) return;
+
+        const chatMemberStatus = (await ctx.getChatMember(from.id)).status;
+        if (['creator', 'administrator'].includes(chatMemberStatus)) return next();
 
         return errorHandler?.(ctx);
     };

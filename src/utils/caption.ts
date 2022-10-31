@@ -37,8 +37,10 @@ function parseTags(tags: string[]): string {
     return ' #' + tags.map(tag => tag.replace(/-| /g, '_')).join(' #');
 }
 
-function textToCode(text: string): string {
-    return `<pre>${text}</pre>`;
+function textToCode(text: string | string[]): string {
+    if (Array.isArray(text))
+        return text.map(t => `<code>${t}</code>`).join('\n');
+    return `<code>${text}</code>`;
 }
 
 export { parseSynonyms, textToCode, getCaption, parseCountry };
