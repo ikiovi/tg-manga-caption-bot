@@ -47,7 +47,7 @@ const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
 
 bot.chatType('channel').use(channelPost);
-bot.chatType('private').use(search, chatMessage);
+bot.chatType('private').use(chatMessage, search);
 
 //#region Channel Post
 

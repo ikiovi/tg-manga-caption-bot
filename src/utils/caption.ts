@@ -24,9 +24,9 @@ function parseCountry(country: string): MangaType {
 
 function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: boolean, synonyms?: string } {
     let text = '';
-    const title_regex = RegExp(title.replace(' ', '|'));
-
+    const title_regex = RegExp(title.replaceAll(' ', '|'));
     for (let i = 0; i < synonyms.length; i++) {
+        if(!(synonyms[i])) continue;
         if (synonyms[i] == title) return { hasEqualValue: true, synonyms: undefined };
         if (synonyms[i].match(title_regex)) text += textToCode(synonyms[i]) + '\n';
     }
