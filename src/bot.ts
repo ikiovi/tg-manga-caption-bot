@@ -126,7 +126,7 @@ bot.callbackQuery(new RegExp('^get:' + sources.regex?.source + '$'), async ctx =
 bot.catch(err => {
     const date = new Date();
     const dateString = `\x1b[41m[${date.toLocaleDateString()} ${date.toLocaleTimeString()}]\x1b[0m`;
-    console.error(dateString, `${err.name}: ${err.message}`);
+    console.error(dateString, `[${err.name}] ${err.message}`);
 });
 
 bot.start();

@@ -31,7 +31,8 @@ function handleResponse(response: Response) {
 }
 
 function handleError(error: unknown) {
-    console.error(error);
+    const { message, constructor } = <Error>error;
+    console.error(`[${constructor.name}] ${message}`);
 }
 //#endregion
 
