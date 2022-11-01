@@ -1,5 +1,5 @@
 import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
-import { Bot, Composer, I18n, session } from './deps.ts';
+import { Bot, Bottleneck, Composer, I18n, session } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 // import { db, getAllChannels } from './services/database.ts';
 // import { DenoDBAdapter } from 'https://deno.land/x/grammy_storages@v2.0.1/denodb/src/mod.ts';
@@ -7,14 +7,19 @@ import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
 import { onlyAdmin } from './utils/middleware.ts';
-import { getFromMatch, getRegexFromSources } from './utils/utils.ts';
+import { getFromMatch } from './utils/utils.ts';
 import { textToCode } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
 
 const bot = new Bot<MyContext>(token);
-const sources = new Sources<MyContext>([Anilist, MangaUpdates]);
+const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
+    maxConcurrent: 1,
+    minTime: 200,
+    highWater: 5,
+    strategy: Bottleneck.strategy.OVERFLOW
+});
 
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
@@ -45,13 +50,14 @@ bot.use(sources);
 
 const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
+const idRegex = () => new RegExp('^' + sources.regex?.source + '$');
 
 bot.chatType('channel').use(channelPost);
 bot.chatType('private').use(chatMessage, search);
 
 //#region Channel Post
 
-channelPost.hears(getRegexFromSources(sources.list), async (ctx, next) => {
+channelPost.hears(idRegex(), async (ctx, next) => {
     const groups = getFromMatch(ctx.match);
     if (!groups) return;
 
@@ -88,24 +94,13 @@ chatMessage.command('language', async (ctx) => {
     await ctx.i18n.setLocale(ctx.match);
     await ctx.reply(ctx.t('language.language-set'));
 });
+
+chatMessage.hears(idRegex(), getIdHandler);
 //#endregion
 
-bot.callbackQuery(getRegexFromSources(sources.list, 'get:'), async ctx => {
+bot.callbackQuery(new RegExp('^get:' + sources.regex?.source + '$'), async ctx => {
     await ctx.answerCallbackQuery();
-    const groups = getFromMatch(ctx.match);
-    if (!groups) return;
-
-    const { tag, id } = groups;
-    const source = ctx.sources.get(tag);
-    if (!source) return;
-    // TODO: function getFromTag(...)
-    source.getById(+id, async result => {
-        if (!result) return;
-        const caption = `${result.caption}\n[ <a href="${result.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
-        if (result.source.previewType == 'Cover' && result.image)
-            return await ctx.replyWithPhoto(result.image, { caption, parse_mode: 'HTML' });
-        await ctx.reply(caption, { parse_mode: 'HTML' });
-    });
+    await getIdHandler(ctx);
 });
 
 bot.catch(err => {
@@ -117,3 +112,17 @@ bot.catch(err => {
 bot.start();
 
 Deno.addSignalListener('SIGINT', () => bot.stop());
+
+function getIdHandler(ctx: EmptySessionContext) {
+    const groups = getFromMatch(ctx.match);
+    if (!groups) return;
+
+    const { tag, id } = groups;
+    ctx.sources.getFromId(tag, +id, async result => {
+        if (!result) return;
+        const caption = `${result.caption}\n[ <a href="${result.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
+        if (result.source.previewType == 'Cover' && result.image)
+            return await ctx.replyWithPhoto(result.image, { caption, parse_mode: 'HTML' });
+        await ctx.reply(caption, { parse_mode: 'HTML' });
+    });
+}

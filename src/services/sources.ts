@@ -1,45 +1,84 @@
 import { Context, MiddlewareFn } from '../deps.ts';
-import { MangaMediaSource } from '../types/manga.ts';
+import { MangaMedia, MangaMediaSource, MangaSearchMedia, SourceType } from '../types/manga.ts';
 import { Service } from '../types/service.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
+import { Bottleneck } from '../deps.ts';
+import { getFromMatch, getRegexFromSources } from '../utils/utils.ts';
 
 class Sources<
     C extends Context & SourcesFlavor
-> implements Service<C>{
-    private sources: Map<string, MangaMediaSource>;
+> extends Map<string, MangaMediaSource> implements Service<C>, SourcesExt {
+    private limiter: Bottleneck;
+    regex?: RegExp;
 
-    constructor(sources: ReadonlyArray<{ new(): MangaMediaSource }>) {
-        this.sources = new Map<string, MangaMediaSource>();
-        sources.forEach(
-            source => this.register(new source())
-        );
+    constructor(sources?: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>, options?: Bottleneck.ConstructorOptions) {
+        super();
+        this.limiter = new Bottleneck(options);
+        this.register(...sources ?? []);
     }
 
-    register(...sources: ReadonlyArray<MangaMediaSource>) {
+    register(...sources: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>) {
         sources.forEach((source) => {
+            if (typeof source == 'function') source = new source();
             if (source.tag == null) {
                 throw new Error('Unsupported source!');
             }
-            this.sources.set(source.tag, source);
+            this.set(source.tag, source);
         });
+        this.regex = getRegexFromSources(this.list);
         return this;
     }
 
     middleware(): MiddlewareFn<C> {
         return async (ctx, next) => {
-            ctx.sources = this.sources;
+            ctx.sources = this;
             return await next();
         };
     }
 
-    public get list(): MangaMediaSource[] {
-        return [...this.sources.values()];
+    getFromId(tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) {
+        const source = this.get(tag);
+        if (!source || !id) return;
+        this.limiter.schedule(() => source.getById(id, callback));
+    }
+
+    searchFromTag(tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) {
+        const source = this.get(tag);
+        if (!source || !search) return;
+        this.limiter.schedule(() => source.searchByTitle(search, callback));
+    }
+
+    private parseFID(fid: string): { tag: string, id: number } | undefined {
+        const match = this.regex?.exec(fid);
+        const groups = getFromMatch(match);
+        if (!groups) return;
+
+        const { tag, id } = groups;
+        if (!tag || !(+id)) return;
+        return { tag, id: +id };
+    }
+
+    getFromFID(fid: string, callback: (result?: MangaMedia | undefined) => void) {
+        const { tag, id } = this.parseFID(fid) ?? {};
+        if (!tag || !id) return;
+        this.getFromId(tag, id, callback);
+    }
+
+    public get list(): SourceType[] {
+        return [...this.values()];
     }
 }
 
+
+interface SourcesExt {
+    getFromId: (tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) => void
+    getFromFID: (fid: string, callback: (result?: MangaMedia | undefined) => void) => void
+    searchFromTag: (tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) => void
+}
+
 interface SourcesFlavor {
-    sources: ReadonlyMap<string, MangaMediaSource>
+    sources: ReadonlyMap<string, SourceType> & SourcesExt
 }
 
 export { Sources, Anilist, MangaUpdates, type SourcesFlavor };

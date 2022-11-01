@@ -40,10 +40,8 @@ export function process(ctx: MediaContext) {
     if (!ctx.channelPost) return;
     const { tag, id } = ctx.session.current.match ?? {};
     if (!tag || !id) return;
-    const source = ctx.sources.get(tag);
-    if (!source) return;
 
-    source.getById(id, result => {
+    ctx.sources.getFromId(tag, id, result => {
         if (!result?.caption) return;
 
         const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;

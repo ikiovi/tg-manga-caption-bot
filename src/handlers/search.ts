@@ -31,12 +31,10 @@ search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
 });
 
 search.on(':text', ctx => {
-    if (!ctx.session.private.source) return;
-    //!: add https://grammy.dev/plugins/transformer-throttler.html
-    const source = ctx.sources.get(ctx.session.private.source);
+    const { source } = ctx.session.private;
     if (!source) return;
     const { text } = ctx.message;
-    source.searchByTitle(text, media => {
+    ctx.sources.searchFromTag(source, text, media => {
         if (!media) return;
         const { message, result, keyboard } = parseMedia(media, text);
         if (!result) return ctx.reply(ctx.t(message));
@@ -58,7 +56,7 @@ function parseMedia(media: MangaSearchMedia[], search: string): { keyboard?: Inl
                 const { hasEqualValue, synonyms } = parseSynonyms(title, search);
                 if (hasEqualValue || synonyms) current += `${c} ${hasEqualValue ? textToCode(search) + '\n' : synonyms}`;
             }
-            if(!current) current += `${c} ${textToCode(title)}\n`;
+            if (!current) current += `${c} ${textToCode(title)}\n`;
             message += current + '\n';
 
             return {
