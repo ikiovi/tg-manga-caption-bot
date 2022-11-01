@@ -15,6 +15,7 @@ class Sources<
     constructor(sources?: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>, options?: Bottleneck.ConstructorOptions) {
         super();
         this.limiter = new Bottleneck(options);
+        console.log(options);
         this.register(...sources ?? []);
     }
 

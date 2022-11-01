@@ -48,11 +48,12 @@ export class Anilist implements MangaMediaSource {
     }
 
     private parseAnilistMedia(media: AnilistMedia, source: SourceType = this): MangaMedia {
-        const { siteUrl: link, genres, countryOfOrigin } = media;
+        const { siteUrl: link, genres, countryOfOrigin, coverImage: { extraLarge } } = media;
         const base = this.parseAnilistSearchMedia(media, source);
         return {
             ...base,
             link,
+            image: extraLarge,
             caption: getCaption({
                 ...base,
                 genres,
@@ -66,7 +67,7 @@ export class Anilist implements MangaMediaSource {
         return {
             id,
             source,
-            title: [...Object.values(title), ...synonyms],
+            title: [title.english ?? title.romaji, ...synonyms],
         };
     }
 }

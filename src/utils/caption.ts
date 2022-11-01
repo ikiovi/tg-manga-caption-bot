@@ -1,4 +1,4 @@
-import { CaptionInfo, MangaType } from '../types/manga.ts';
+import { CaptionInfo, MangaMedia, MangaType } from '../types/manga.ts';
 
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
@@ -7,6 +7,10 @@ function getCaption(info: CaptionInfo): string {
         ? info.title : info.title.filter(t => t !== undefined)[0];
 
     return `${tags}\n${textToCode(title)}`;
+}
+
+function getPreviewCaption(tag: string, id: string | number, media: MangaMedia) {
+    return `${media.caption}\n[ <a href="${media.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
 }
 
 function parseCountry(country: string): MangaType {
@@ -26,7 +30,7 @@ function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: bool
     let text = '';
     const title_regex = RegExp(title.replaceAll(' ', '|'));
     for (let i = 0; i < synonyms.length; i++) {
-        if(!(synonyms[i])) continue;
+        if (!(synonyms[i])) continue;
         if (synonyms[i] == title) return { hasEqualValue: true, synonyms: undefined };
         if (synonyms[i].match(title_regex)) text += textToCode(synonyms[i]) + '\n';
     }
@@ -43,4 +47,4 @@ function textToCode(text: string | string[]): string {
     return `<code>${text}</code>`;
 }
 
-export { parseSynonyms, textToCode, getCaption, parseCountry };
+export { parseSynonyms, textToCode, getCaption, parseCountry, getPreviewCaption };

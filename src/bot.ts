@@ -1,14 +1,11 @@
 import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
 import { Bot, Bottleneck, Composer, I18n, session } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
-// import { db, getAllChannels } from './services/database.ts';
-// import { DenoDBAdapter } from 'https://deno.land/x/grammy_storages@v2.0.1/denodb/src/mod.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
-import { onlyAdmin } from './utils/middleware.ts';
 import { getFromMatch } from './utils/utils.ts';
-import { textToCode } from './utils/caption.ts';
+import { getPreviewCaption } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
@@ -16,10 +13,11 @@ if (!token) throw new Error('TOKEN must be provided!');
 const bot = new Bot<MyContext>(token);
 const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
     maxConcurrent: 1,
-    minTime: 200,
-    highWater: 5,
+    minTime: +(Deno.env.get('RL_MINTIME_MS') ?? 200),
+    highWater: +(Deno.env.get('RL_MAXQUEUE') ?? 5),
     strategy: Bottleneck.strategy.OVERFLOW
 });
+const idRegex = () => new RegExp('^' + sources.regex?.source + '$');
 
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
@@ -27,6 +25,7 @@ const i18n = new I18n<MyContext>({
     directory: 'locales',
 });
 
+//#region Services Registration
 bot.use(session({
     type: 'multi',
     current: {
@@ -35,25 +34,19 @@ bot.use(session({
     private: {
         initial: () => ({})
     }
-    // db: {
-    //     initial: () => ({ allowAliases: true }),
-    //     getSessionKey: ctx => ctx.chat?.type == 'channel' ? ctx.chat.id.toString() : undefined,
-    //     storage: new DenoDBAdapter(db)
-    // }
 }));
 
-// await db.sync();
-
-bot.use(onlyAdmin());
 bot.use(i18n);
 bot.use(sources);
+//#endregion
 
+//#region Handlers Registration
 const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
-const idRegex = () => new RegExp('^' + sources.regex?.source + '$');
 
 bot.chatType('channel').use(channelPost);
 bot.chatType('private').use(chatMessage, search);
+//#endregion
 
 //#region Channel Post
 
@@ -81,22 +74,49 @@ chatMessage.command('help', async ctx => {
     await ctx.reply(text);
 });
 
-chatMessage.command('language', async (ctx) => {
-    if (ctx.match === '')
-        return await ctx.reply(ctx.t('language.specify-a-locale'));
+// TODO
+// chatMessage.command('language', async (ctx) => {
+//     if (ctx.match === '')
+//         return await ctx.reply(ctx.t('language.specify-a-locale'));
 
-    if (!i18n.locales.includes(ctx.match))
-        return await ctx.reply(ctx.t('language.invalid-locale'));
+//     if (!i18n.locales.includes(ctx.match))
+//         return await ctx.reply(ctx.t('language.invalid-locale'));
 
-    if ((await ctx.i18n.getLocale()) === ctx.match)
-        return await ctx.reply(ctx.t('language.already-set'));
+//     if ((await ctx.i18n.getLocale()) === ctx.match)
+//         return await ctx.reply(ctx.t('language.already-set'));
 
-    await ctx.i18n.setLocale(ctx.match);
-    await ctx.reply(ctx.t('language.language-set'));
-});
+//     await ctx.i18n.setLocale(ctx.match);
+//     await ctx.reply(ctx.t('language.language-set'));
+// });
 
 chatMessage.hears(idRegex(), getIdHandler);
 //#endregion
+
+bot.inlineQuery(idRegex(), async ctx => {
+    const groups = getFromMatch(ctx.match);
+    if (!groups) return;
+
+    const { tag, id } = groups;
+    ctx.sources.getFromId(tag, +id, async result => {
+        if (!result) return;
+        const caption = getPreviewCaption(tag, id, result);
+
+        await ctx.answerInlineQuery([{
+            type: 'article',
+            id: tag + id,
+            title: Array.isArray(result.title) ? result.title[0] : result.title,
+            url: result.link,
+            hide_url: true,
+            thumb_url: result.image,
+            input_message_content: {
+                message_text: caption,
+                photo_url: result.image,
+                disable_web_page_preview: false,
+                parse_mode: 'HTML'
+            }
+        }]);
+    });
+});
 
 bot.callbackQuery(new RegExp('^get:' + sources.regex?.source + '$'), async ctx => {
     await ctx.answerCallbackQuery();
@@ -120,7 +140,7 @@ function getIdHandler(ctx: EmptySessionContext) {
     const { tag, id } = groups;
     ctx.sources.getFromId(tag, +id, async result => {
         if (!result) return;
-        const caption = `${result.caption}\n[ <a href="${result.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
+        const caption = getPreviewCaption(tag, id, result);
         if (result.source.previewType == 'Cover' && result.image)
             return await ctx.replyWithPhoto(result.image, { caption, parse_mode: 'HTML' });
         await ctx.reply(caption, { parse_mode: 'HTML' });
