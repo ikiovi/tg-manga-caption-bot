@@ -1,4 +1,4 @@
-import { CaptionInfo, MangaMedia, MangaType } from '../types/manga.ts';
+import { CaptionInfo, MangaMedia, MangaType, mangaTypes } from '../types/manga.ts';
 
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
@@ -14,6 +14,8 @@ function getPreviewCaption(tag: string, id: string | number, media: MangaMedia) 
 }
 
 function parseCountry(country: string): MangaType {
+    const type = country as MangaType;
+    if (mangaTypes.includes(type)) return type;
     switch (country) {
         case 'JP':
             return 'Manga';
@@ -26,13 +28,17 @@ function parseCountry(country: string): MangaType {
     }
 }
 
-function parseSynonyms(synonyms: string[], title: string): { hasEqualValue: boolean, synonyms?: string } {
+function parseSynonyms(synonyms: string[], title: string, max = 10): { hasEqualValue: boolean, synonyms?: string } {
     let text = '';
     const title_regex = RegExp(title.replaceAll(' ', '|'));
-    for (let i = 0; i < synonyms.length; i++) {
+    for (let i = 0, c = 0; i < synonyms.length && c < max; i++) {
         if (!(synonyms[i])) continue;
         if (synonyms[i] == title) return { hasEqualValue: true, synonyms: undefined };
-        if (synonyms[i].match(title_regex)) text += textToCode(synonyms[i]) + '\n';
+        if (synonyms[i].match(title_regex)){
+            if(text) text += '\n';
+            text += textToCode(synonyms[i]);
+            c++;
+        }
     }
     return { hasEqualValue: false, synonyms: text };
 }

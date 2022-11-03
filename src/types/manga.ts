@@ -27,11 +27,12 @@ interface MangaMediaSource extends SourceType {
     getById(id: number, callback: (result?: MangaMedia) => void): void
 }
 
+export const mangaTypes = ['Manga', 'Manhwa', 'Manhua', 'Novel', 'OEL',
+    'Artbook', 'Doujinshi', 'Drama CD',
+    'Filipino', 'Indonesian', 'Thai', 'Vietnamese',
+    'Malaysian', 'Nordic', 'French', 'Spanish', 'Unknown'] as const; // For runtime checking
+
 type PreviewType = 'Cover' | 'Link';
-type MangaType =
-    | 'Manga' | 'Manhwa' | 'Manhua' | 'Novel' | 'OEL'
-    | 'Artbook' | 'Doujinshi' | 'Drama CD'
-    | 'Filipino' | 'Indonesian' | 'Thai' | 'Vietnamese'
-    | 'Malaysian' | 'Nordic' | 'French' | 'Spanish' | 'Unknown';
+type MangaType = typeof mangaTypes[number];
 
 export type { MangaMedia, MangaSearchMedia, MangaMediaSource, PreviewType, SourceType, CaptionInfo, MangaType };

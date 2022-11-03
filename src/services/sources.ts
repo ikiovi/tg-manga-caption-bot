@@ -8,13 +8,13 @@ import { getFromMatch, getRegexFromSources } from '../utils/utils.ts';
 
 class Sources<
     C extends Context & SourcesFlavor
-> extends Map<string, MangaMediaSource> implements Service<C>, SourcesExt {
+> extends Map<string, MangaMediaSource> implements Service<C> {
     private limiter: Bottleneck;
     regex?: RegExp;
 
     constructor(sources?: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>, options?: Bottleneck.ConstructorOptions) {
         super();
-        this.limiter = new Bottleneck(options);
+        this.limiter = new Bottleneck.Group(options);
         // console.log(options);
         this.register(...sources ?? []);
     }
@@ -33,21 +33,28 @@ class Sources<
 
     middleware(): MiddlewareFn<C> {
         return async (ctx, next) => {
-            ctx.sources = this;
+            const chatLimiter: Bottleneck = this.limiter.key(ctx.chat?.id);
+
+            ctx.sources = {
+                getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
+                getFromId: (...args) => this.getFromId(chatLimiter, ...args),
+                searchFromTag: (...args) => this.searchFromTag(chatLimiter, ...args),
+                list: this.list
+            };
             return await next();
         };
     }
 
-    getFromId(tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) {
+    private getFromId(limiter: Bottleneck, tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) {
         const source = this.get(tag);
         if (!source || !id) return;
-        this.limiter.schedule(() => source.getById(id, callback));
+        limiter.schedule(() => source.getById(id, callback));
     }
 
-    searchFromTag(tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) {
+    private searchFromTag(limiter: Bottleneck, tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) {
         const source = this.get(tag);
         if (!source || !search) return;
-        this.limiter.schedule(() => source.searchByTitle(search, callback));
+        limiter.schedule(() => source.searchByTitle(search, callback));
     }
 
     private parseFID(fid: string): { tag: string, id: number } | undefined {
@@ -60,10 +67,10 @@ class Sources<
         return { tag, id: +id };
     }
 
-    getFromFID(fid: string, callback: (result?: MangaMedia | undefined) => void) {
+    private getFromFID(limiter: Bottleneck, fid: string, callback: (result?: MangaMedia | undefined) => void) {
         const { tag, id } = this.parseFID(fid) ?? {};
         if (!tag || !id) return;
-        this.getFromId(tag, id, callback);
+        this.getFromId(limiter, tag, id, callback);
     }
 
     public get list(): SourceType[] {
@@ -71,15 +78,13 @@ class Sources<
     }
 }
 
-
-interface SourcesExt {
-    getFromId: (tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) => void
-    getFromFID: (fid: string, callback: (result?: MangaMedia | undefined) => void) => void
-    searchFromTag: (tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) => void
-}
-
 interface SourcesFlavor {
-    sources: ReadonlyMap<string, SourceType> & SourcesExt
+    sources: {
+        getFromId: (tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) => void
+        getFromFID: (fid: string, callback: (result?: MangaMedia | undefined) => void) => void
+        searchFromTag: (tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) => void,
+        list: SourceType[]
+    }
 }
 
 export { Sources, Anilist, MangaUpdates, type SourcesFlavor };

@@ -14,7 +14,7 @@ const bot = new Bot<MyContext>(token);
 const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
     maxConcurrent: 1,
     minTime: +(Deno.env.get('RL_MINTIME_MS') ?? 200),
-    highWater: +(Deno.env.get('RL_MAXQUEUE') ?? 5),
+    highWater: +(Deno.env.get('RL_MAXQUEUE') ?? 3),
     strategy: Bottleneck.strategy.OVERFLOW
 });
 const idRegex = () => new RegExp('^' + sources.regex?.source + '$');

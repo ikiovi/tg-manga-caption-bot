@@ -8,7 +8,7 @@ import { getFromMatch } from '../utils/utils.ts';
 export const search = new Composer<SearchContext>().chatType('private');
 
 search.command(['setSource', 'setsource'], async ctx => {
-    const keyboard = Array.from(ctx.sources.keys())
+    const keyboard = ctx.sources.list.map(l => l.tag)
         .reduce<InlineKeyboard>(
             (k, t) => k.text(
                 ctx.t('source-' + t.toLowerCase()),
@@ -50,13 +50,14 @@ function parseMedia(media: MangaSearchMedia[], search: string): { keyboard?: Inl
     const keyboard = inlineKeyboardFromArray<MangaSearchMedia>(media,
         (value, i) => {
             const { id, source, title } = value;
-            const c = `${i + 1}.`;
+            const c = `${i + 1}. `;
             let current = '';
             if (Array.isArray(title)) {
                 const { hasEqualValue, synonyms } = parseSynonyms(title, search);
-                if (hasEqualValue || synonyms) current += `${c} ${hasEqualValue ? textToCode(search) + '\n' : synonyms}`;
+                if (hasEqualValue || synonyms) current = `${c}${hasEqualValue ? textToCode(search): synonyms}\n`;
+                else current = c + textToCode(title[0]) + '\n';
             }
-            if (!current) current += `${c} ${textToCode(title)}\n`;
+            if (!current) current += `${c}${textToCode(title)}\n`;
             message += current + '\n';
 
             return {
