@@ -8,11 +8,10 @@ import { getFromMatch } from '../utils/utils.ts';
 export const search = new Composer<SearchContext>().chatType('private');
 
 search.command(['setSource', 'setsource'], async ctx => {
-    const keyboard = ctx.sources.list.map(l => l.tag)
-        .reduce<InlineKeyboard>(
-            (k, t) => k.text(
-                ctx.t('source-' + t.toLowerCase()),
-                'search:' + t
+    const keyboard = ctx.sources.list.reduce<InlineKeyboard>(
+            (k, { tag }) => k.text(
+                ctx.t('source-' + tag.toLowerCase()),
+                'search:' + tag
             ), new InlineKeyboard()
         );
 
