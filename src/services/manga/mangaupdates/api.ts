@@ -1,7 +1,7 @@
 import { getCaption } from '../../../utils/caption.ts';
-import { handleError, handleResponse } from '../../../utils/utils.ts';
-import { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia } from './types.ts';
-import { MangaMedia, MangaMediaSource, MangaSearchMedia, PreviewType, SourceType } from '../../../types/manga.ts';
+import { handleError, handleResponse, where } from '../../../utils/utils.ts';
+import { MangaUpdatesData, MangaUpdatesMedia } from './types.ts';
+import { MangaMedia, MangaMediaSource, MangaSearchMedia, PreviewType } from '../../../types/manga.ts';
 
 export class MangaUpdates implements MangaMediaSource {
     readonly tag = 'MU';
@@ -14,12 +14,14 @@ export class MangaUpdates implements MangaMediaSource {
             'Accept': 'application/json',
         }
     };
+    readonly fetch = fetch;
+    readonly where = where<MangaUpdates, MangaMediaSource>;
 
     private cache: Map<number, MangaMedia>;
 
     constructor(cache?: Map<number, MangaMedia>) {
         this.cache = cache ?? new Map<number, MangaMedia>();
-        setInterval(this.cache.clear, (Deno.env.get('CACHE_MINUTES') ?? 20) as number * 60000);
+        setInterval(() => this.cache.clear(), +(Deno.env.get('CACHE_MINUTES') ?? 5) * 2000);
     }
 
     searchByTitle(search: string, callback: (result?: MangaSearchMedia[] | undefined) => void): void {
@@ -32,18 +34,18 @@ export class MangaUpdates implements MangaMediaSource {
             })
         };
 
-        this.callApi<MangaUpdatesData>(path, options,
-            ({ results }) => {
-                const result = results.map(m => this.parseMangaUpdatesSearchMedia(m, this));
-
-                for (const { record } of results) {
-                    const media = this.parseMangaUpdatesMedia(record);
-                    this.cache.set(media.id, media);
-                }
-
-                callback(result);
+        this.callApi<MangaUpdatesData>(path, options, ({results}) => {
+            const result: MangaSearchMedia[] = [];
+            let count = 0;
+            for (const { record } of results) {
+                const media = this.parseMangaUpdatesMedia(record);
+                result.push(media);
+                if (this.cache.has(record.series_id) || count > 5) continue;
+                this.cache.set(media.id, media);
+                count++;
             }
-        );
+            callback(result);
+        });
     }
 
     getById(id: number, callback: (result?: MangaMedia | undefined) => void): void {
@@ -57,25 +59,27 @@ export class MangaUpdates implements MangaMediaSource {
             return callback(this.cache.get(id));
 
         this.callApi(path, options, (response: MangaUpdatesMedia) => {
-            callback(this.parseMangaUpdatesMedia(response));
+            const result = this.parseMangaUpdatesMedia(response);
+            this.cache.set(result.id, result);
+            callback(result);
         });
     }
 
     private callApi<T extends MangaUpdatesMedia | MangaUpdatesData>(path: string, options: RequestInit, callback: (result: T) => void) {
-        fetch(this.api + path, options)
+        this.fetch(this.api + path, options)
             .then(handleResponse)
             .then(callback)
             .catch(handleError);
     }
 
-    private parseMangaUpdatesMedia(media: MangaUpdatesMedia, source: SourceType = this): MangaMedia {
+    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): MangaMedia {
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,
             link,
             title,
-            source,
-            genres: genres.map(g => g.genre),
+            source: this,
+            genres: genres?.map(g => g.genre),
             image: image.url.original
         };
 
@@ -86,9 +90,5 @@ export class MangaUpdates implements MangaMediaSource {
                 ...result,
             })
         };
-    }
-
-    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia, source: SourceType = this): MangaSearchMedia {
-        return this.parseMangaUpdatesMedia(media.record, source);
     }
 }

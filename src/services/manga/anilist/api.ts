@@ -1,6 +1,6 @@
 import { resolve, join } from '../../../deps.ts';
 import { getCaption, parseCountry } from '../../../utils/caption.ts';
-import { handleError, handleResponse } from '../../../utils/utils.ts';
+import { handleError, handleResponse, where } from '../../../utils/utils.ts';
 import { AnilistData, AnilistMedia, AnilistSearchData, AnilistSearchMedia } from './types.ts';
 import { MangaMediaSource, PreviewType, MangaSearchMedia, MangaMedia, SourceType } from '../../../types/manga.ts';
 
@@ -16,6 +16,8 @@ export class Anilist implements MangaMediaSource {
             'Accept': 'application/json',
         }
     };
+    readonly fetch = fetch;
+    readonly where = where<Anilist, MangaMediaSource>;
 
     private readonly queries = resolve('./resources/anilist/');
 
@@ -41,7 +43,7 @@ export class Anilist implements MangaMediaSource {
                 variables
             })
         };
-        fetch(this.api, options)
+        this.fetch(this.api, options)
             .then(handleResponse)
             .then(callback)
             .catch(handleError);

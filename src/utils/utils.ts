@@ -23,6 +23,11 @@ function getFromMatch(match: string | RegExpMatchArray | undefined | null) {
     return groups;
 }
 
+function where<T extends object, F = T>(this: T, args?: Partial<F>): T {
+    return Object.assign(this, args);
+}
+
+
 //#region Handlers
 function handleResponse(response: Response) {
     return response.json().then(json => {
@@ -36,4 +41,4 @@ function handleError(error: unknown) {
 }
 //#endregion
 
-export { hashUserId, handleResponse, handleError, getRegexFromSources, getFromMatch };
+export { hashUserId, handleResponse, handleError, getRegexFromSources, getFromMatch, where };

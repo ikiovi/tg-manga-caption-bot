@@ -1,8 +1,8 @@
-import { CaptionInfo, MangaMedia, MangaType, mangaTypes } from '../types/manga.ts';
+import { CaptionInfo, MangaMedia, MangaType } from '../types/manga.ts';
 
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
-    const tags = parseTags([`${tag}${id}`, type, ...genres]);
+    const tags = parseTags([`${tag}${id}`, type, ...genres ?? []]);
     const title = typeof info.title === 'string'
         ? info.title : info.title.filter(t => t !== undefined)[0];
 
@@ -14,8 +14,6 @@ function getPreviewCaption(tag: string, id: string | number, media: MangaMedia) 
 }
 
 function parseCountry(country: string): MangaType {
-    const type = country as MangaType;
-    if (mangaTypes.includes(type)) return type;
     switch (country) {
         case 'JP':
             return 'Manga';
@@ -44,11 +42,11 @@ function parseSynonyms(synonyms: string[], title: string, max = 10): { hasEqualV
 }
 
 function parseTags(tags: string[]): string {
-    return ' #' + tags.map(tag => tag.replace(/-| /g, '_')).join(' #');
+    return ' #' + tags?.map(tag => tag.replace(/-| /g, '_'))?.join(' #');
 }
 
 function textToCode(text: string | string[]): string {
-    if (Array.isArray(text))
+    if (text && Array.isArray(text))
         return text.map(t => `<code>${t}</code>`).join('\n');
     return `<code>${text}</code>`;
 }

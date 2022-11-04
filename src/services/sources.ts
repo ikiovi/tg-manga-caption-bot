@@ -46,15 +46,15 @@ class Sources<
     }
 
     private getFromId(limiter: Bottleneck, tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) {
-        const source = this.get(tag);
+        const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !id) return;
-        limiter.schedule(() => source.getById(id, callback));
+        source.getById(id, callback);
     }
 
     private searchFromTag(limiter: Bottleneck, tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) {
-        const source = this.get(tag);
+        const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !search) return;
-        limiter.schedule(() => source.searchByTitle(search, callback));
+        source.searchByTitle(search, callback);
     }
 
     private parseFID(fid: string): { tag: string, id: number } | undefined {
