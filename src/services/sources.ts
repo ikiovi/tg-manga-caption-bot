@@ -1,5 +1,5 @@
 import { Context, MiddlewareFn } from '../deps.ts';
-import { MangaMedia, MangaMediaSource, MangaSearchMedia, SourceType } from '../types/manga.ts';
+import { InfoMedia, InfoMediaSource, InfoSearchMedia, SourceType } from '../types/manga.ts';
 import { Service } from '../types/service.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
@@ -8,18 +8,18 @@ import { getFromMatch, getRegexFromSources } from '../utils/utils.ts';
 
 class Sources<
     C extends Context & SourcesFlavor
-> extends Map<string, MangaMediaSource> implements Service<C> {
+> extends Map<string, InfoMediaSource> implements Service<C> {
     private limiter: Bottleneck;
     regex?: RegExp;
 
-    constructor(sources?: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>, options?: Bottleneck.ConstructorOptions) {
+    constructor(sources?: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>, options?: Bottleneck.ConstructorOptions) {
         super();
         this.limiter = new Bottleneck.Group(options);
         // console.log(options);
         this.register(...sources ?? []);
     }
 
-    register(...sources: ReadonlyArray<MangaMediaSource | { new(): MangaMediaSource }>) {
+    register(...sources: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>) {
         sources.forEach((source) => {
             if (typeof source == 'function') source = new source();
             if (source.tag == null) {
@@ -45,13 +45,13 @@ class Sources<
         };
     }
 
-    private getFromId(limiter: Bottleneck, tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) {
+    private getFromId(limiter: Bottleneck, tag: string, id: number, callback: (result?: InfoMedia | undefined) => void) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !id) return;
         source.getById(id, callback);
     }
 
-    private searchFromTag(limiter: Bottleneck, tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) {
+    private searchFromTag(limiter: Bottleneck, tag: string, search: string, callback: (result?: InfoSearchMedia[] | undefined) => void) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !search) return;
         source.searchByTitle(search, callback);
@@ -67,7 +67,7 @@ class Sources<
         return { tag, id: +id };
     }
 
-    private getFromFID(limiter: Bottleneck, fid: string, callback: (result?: MangaMedia | undefined) => void) {
+    private getFromFID(limiter: Bottleneck, fid: string, callback: (result?: InfoMedia | undefined) => void) {
         const { tag, id } = this.parseFID(fid) ?? {};
         if (!tag || !id) return;
         this.getFromId(limiter, tag, id, callback);
@@ -80,9 +80,9 @@ class Sources<
 
 interface SourcesFlavor {
     sources: {
-        getFromId: (tag: string, id: number, callback: (result?: MangaMedia | undefined) => void) => void
-        getFromFID: (fid: string, callback: (result?: MangaMedia | undefined) => void) => void
-        searchFromTag: (tag: string, search: string, callback: (result?: MangaSearchMedia[] | undefined) => void) => void,
+        getFromId: (tag: string, id: number, callback: (result?: InfoMedia | undefined) => void) => void
+        getFromFID: (fid: string, callback: (result?: InfoMedia | undefined) => void) => void
+        searchFromTag: (tag: string, search: string, callback: (result?: InfoSearchMedia[] | undefined) => void) => void,
         list: SourceType[]
     }
 }

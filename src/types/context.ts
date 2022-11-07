@@ -1,5 +1,4 @@
 import { Context, SessionFlavor, I18nFlavor } from '../deps.ts';
-// import { BotDB } from '../services/database.ts';
 import { SourcesFlavor } from '../services/sources.ts';
 import { Empty } from './utils.ts';
 
@@ -18,7 +17,6 @@ interface MediaSessionData{
         match?: { tag: string, id: number }
         shouldCatch?: boolean
     }
-    // db: BotDB
 }
 
 interface SearchSessionData {

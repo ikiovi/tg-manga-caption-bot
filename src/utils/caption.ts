@@ -1,4 +1,4 @@
-import { CaptionInfo, MangaMedia, MangaType } from '../types/manga.ts';
+import { CaptionInfo, InfoMedia, MangaType } from '../types/manga.ts';
 
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
@@ -9,7 +9,7 @@ function getCaption(info: CaptionInfo): string {
     return `${tags}\n${textToCode(title)}`;
 }
 
-function getPreviewCaption(tag: string, id: string | number, media: MangaMedia) {
+function getPreviewCaption(tag: string, id: string | number, media: InfoMedia) {
     return `${media.caption}\n[ <a href="${media.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
 }
 

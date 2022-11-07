@@ -1,9 +1,9 @@
 import { getCaption } from '../../../utils/caption.ts';
 import { handleError, handleResponse, where } from '../../../utils/utils.ts';
 import { MangaUpdatesData, MangaUpdatesMedia } from './types.ts';
-import { MangaMedia, MangaMediaSource, MangaSearchMedia, PreviewType } from '../../../types/manga.ts';
+import { InfoMedia, InfoMediaSource, InfoSearchMedia, PreviewType } from '../../../types/manga.ts';
 
-export class MangaUpdates implements MangaMediaSource {
+export class MangaUpdates implements InfoMediaSource {
     readonly tag = 'MU';
     readonly link = 'https://mangaupdates.com';
     readonly api = 'https://api.mangaupdates.com/v1/';
@@ -15,16 +15,16 @@ export class MangaUpdates implements MangaMediaSource {
         }
     };
     readonly fetch = fetch;
-    readonly where = where<MangaUpdates, MangaMediaSource>;
+    readonly where = where<MangaUpdates, InfoMediaSource>;
 
-    private cache: Map<number, MangaMedia>;
+    private cache: Map<number, InfoMedia>;
 
-    constructor(cache?: Map<number, MangaMedia>) {
-        this.cache = cache ?? new Map<number, MangaMedia>();
+    constructor(cache?: Map<number, InfoMedia>) {
+        this.cache = cache ?? new Map<number, InfoMedia>();
         setInterval(() => this.cache.clear(), +(Deno.env.get('CACHE_MINUTES') ?? 5) * 2000);
     }
 
-    searchByTitle(search: string, callback: (result?: MangaSearchMedia[] | undefined) => void): void {
+    searchByTitle(search: string, callback: (result?: InfoSearchMedia[] | undefined) => void): void {
         const path = 'series/search';
         const options = {
             method: 'POST',
@@ -35,7 +35,7 @@ export class MangaUpdates implements MangaMediaSource {
         };
 
         this.callApi<MangaUpdatesData>(path, options, ({results}) => {
-            const result: MangaSearchMedia[] = [];
+            const result: InfoSearchMedia[] = [];
             let count = 0;
             for (const { record } of results) {
                 const media = this.parseMangaUpdatesMedia(record);
@@ -48,7 +48,7 @@ export class MangaUpdates implements MangaMediaSource {
         });
     }
 
-    getById(id: number, callback: (result?: MangaMedia | undefined) => void): void {
+    getById(id: number, callback: (result?: InfoMedia | undefined) => void): void {
         const path = `series/${id}`;
         const options = {
             method: 'GET',
@@ -72,7 +72,7 @@ export class MangaUpdates implements MangaMediaSource {
             .catch(handleError);
     }
 
-    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): MangaMedia {
+    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): InfoMedia {
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,

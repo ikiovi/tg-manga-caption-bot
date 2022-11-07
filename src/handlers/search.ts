@@ -1,6 +1,6 @@
 import { Composer, InlineKeyboard } from '../deps.ts';
 import { SearchContext } from '../types/context.ts';
-import { MangaSearchMedia } from '../types/manga.ts';
+import { InfoSearchMedia } from '../types/manga.ts';
 import { parseSynonyms, textToCode } from '../utils/caption.ts';
 import { inlineKeyboardFromArray } from '../utils/markup.ts';
 import { getFromMatch } from '../utils/utils.ts';
@@ -42,11 +42,11 @@ search.on(':text', ctx => {
 });
 
 
-function parseMedia(media: MangaSearchMedia[], search: string): { keyboard?: InlineKeyboard, message: string, result: boolean } {
+function parseMedia(media: InfoSearchMedia[], search: string): { keyboard?: InlineKeyboard, message: string, result: boolean } {
     if (!media.length) return { keyboard: undefined, message: 'title-not-found', result: false };
 
     let message = '';
-    const keyboard = inlineKeyboardFromArray<MangaSearchMedia>(media,
+    const keyboard = inlineKeyboardFromArray<InfoSearchMedia>(media,
         (value, i) => {
             const { id, source, title } = value;
             const c = `${i + 1}. `;

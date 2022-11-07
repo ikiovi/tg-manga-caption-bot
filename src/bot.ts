@@ -11,6 +11,7 @@ const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
 
 const bot = new Bot<MyContext>(token);
+
 const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
     maxConcurrent: 1,
     minTime: +(Deno.env.get('RL_MINTIME_MS') ?? 200),
@@ -25,27 +26,23 @@ const i18n = new I18n<MyContext>({
     directory: 'locales',
 });
 
+const initial = () => ({});
 //#region Services Registration
 bot.use(session({
     type: 'multi',
-    current: {
-        initial: () => ({})
-    },
-    private: {
-        initial: () => ({})
-    }
+    current: { initial },
+    private: { initial }
 }));
-
-bot.use(i18n);
-bot.use(sources);
+bot.use(i18n, sources);
 //#endregion
 
 //#region Handlers Registration
+
 const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
 
-bot.chatType('channel').use(channelPost);
-bot.chatType('private').use(chatMessage, search);
+bot.chatType('channel', channelPost);
+bot.chatType('private', chatMessage, search);
 //#endregion
 
 //#region Channel Post
@@ -73,21 +70,6 @@ chatMessage.command('help', async ctx => {
     ).join('\n');
     await ctx.reply(text);
 });
-
-// TODO
-// chatMessage.command('language', async (ctx) => {
-//     if (ctx.match === '')
-//         return await ctx.reply(ctx.t('language.specify-a-locale'));
-
-//     if (!i18n.locales.includes(ctx.match))
-//         return await ctx.reply(ctx.t('language.invalid-locale'));
-
-//     if ((await ctx.i18n.getLocale()) === ctx.match)
-//         return await ctx.reply(ctx.t('language.already-set'));
-
-//     await ctx.i18n.setLocale(ctx.match);
-//     await ctx.reply(ctx.t('language.language-set'));
-// });
 
 chatMessage.hears(idRegex(), getIdHandler);
 //#endregion

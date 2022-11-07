@@ -2,9 +2,9 @@ import { resolve, join } from '../../../deps.ts';
 import { getCaption, parseCountry } from '../../../utils/caption.ts';
 import { handleError, handleResponse, where } from '../../../utils/utils.ts';
 import { AnilistData, AnilistMedia, AnilistSearchData, AnilistSearchMedia } from './types.ts';
-import { MangaMediaSource, PreviewType, MangaSearchMedia, MangaMedia, SourceType } from '../../../types/manga.ts';
+import { InfoMediaSource, PreviewType, InfoSearchMedia, InfoMedia, SourceType } from '../../../types/manga.ts';
 
-export class Anilist implements MangaMediaSource {
+export class Anilist implements InfoMediaSource {
     readonly tag = 'AL';
     readonly link = 'https://anilist.co';
     readonly api = 'https://graphql.anilist.co';
@@ -17,18 +17,18 @@ export class Anilist implements MangaMediaSource {
         }
     };
     readonly fetch = fetch;
-    readonly where = where<Anilist, MangaMediaSource>;
+    readonly where = where<Anilist, InfoMediaSource>;
 
     private readonly queries = resolve('./resources/anilist/');
 
-    searchByTitle(search: string, callback: (result?: MangaSearchMedia[] | undefined) => void): void {
+    searchByTitle(search: string, callback: (result?: InfoSearchMedia[] | undefined) => void): void {
         const query = Deno.readTextFileSync(join(this.queries, 'search.gql'));
         this.callApi<AnilistSearchData>(query, { search }, ({ data: { Page: { media } } }) => {
             callback(media.map(m => this.parseAnilistSearchMedia(m, this)));
         });
     }
 
-    getById(id: number, callback: (result?: MangaMedia) => void): void {
+    getById(id: number, callback: (result?: InfoMedia) => void): void {
         const query = Deno.readTextFileSync(join(this.queries, 'get.gql'));
         this.callApi<AnilistData>(query, { id }, ({ data: { Media } }) => {
             callback(this.parseAnilistMedia(Media));
@@ -49,7 +49,7 @@ export class Anilist implements MangaMediaSource {
             .catch(handleError);
     }
 
-    private parseAnilistMedia(media: AnilistMedia, source: SourceType = this): MangaMedia {
+    private parseAnilistMedia(media: AnilistMedia, source: SourceType = this): InfoMedia {
         const { siteUrl: link, genres, countryOfOrigin, coverImage: { extraLarge } } = media;
         const base = this.parseAnilistSearchMedia(media, source);
         return {
@@ -64,7 +64,7 @@ export class Anilist implements MangaMediaSource {
         };
     }
 
-    private parseAnilistSearchMedia(media: AnilistSearchMedia, source: SourceType = this): MangaSearchMedia {
+    private parseAnilistSearchMedia(media: AnilistSearchMedia, source: SourceType = this): InfoSearchMedia {
         const { id, title, synonyms } = media;
         return {
             id,
