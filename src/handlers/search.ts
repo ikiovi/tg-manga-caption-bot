@@ -49,15 +49,14 @@ function parseMedia(media: InfoSearchMedia[], search: string): { keyboard?: Inli
     const keyboard = inlineKeyboardFromArray<InfoSearchMedia>(media,
         (value, i) => {
             const { id, source, title } = value;
-            const c = `${i + 1}. `;
             let current = '';
             if (Array.isArray(title)) {
                 const { hasEqualValue, synonyms } = parseSynonyms(title, search);
-                if (hasEqualValue || synonyms) current = `${c}${hasEqualValue ? textToCode(search): synonyms}\n`;
-                else current = c + textToCode(title[0]) + '\n';
+                if (hasEqualValue || synonyms) current = (hasEqualValue ? textToCode(search) : synonyms) + '\n';
+                else current = textToCode(title[0]) + '\n';
             }
-            if (!current) current += `${c}${textToCode(title)}\n`;
-            message += current + '\n';
+            if (!current) current = `${textToCode(title)}\n`;
+            message += `${i + 1}. ` + current + '\n';
 
             return {
                 text: `${i + 1}`,
