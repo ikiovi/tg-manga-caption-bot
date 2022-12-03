@@ -40,7 +40,7 @@ export class MangaUpdates implements InfoMediaSource {
             for (const { record } of results) {
                 const media = this.parseMangaUpdatesMedia(record);
                 result.push(media);
-                if (this.cache.has(record.series_id) || count > 5) continue;
+                if (this.cache.has(record.series_id) || count > 7) continue; // -_-
                 this.cache.set(media.id, media);
                 count++;
             }
@@ -85,10 +85,7 @@ export class MangaUpdates implements InfoMediaSource {
 
         return {
             ...result,
-            caption: getCaption({
-                type,
-                ...result,
-            })
+            caption: getCaption({ ...result, type })
         };
     }
 }

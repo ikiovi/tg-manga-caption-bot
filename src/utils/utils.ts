@@ -15,12 +15,9 @@ function where<T extends object, F = T>(this: T, args?: Partial<F>): T {
     return Object.assign(this, args);
 }
 
-
 //#region Handlers
 function handleResponse(response: Response) {
-    return response.json().then(json => {
-        return response.ok ? json : Promise.reject(json);
-    });
+    return response.json().then(json => response.ok ? json : Promise.reject(json));
 }
 
 function handleError(error: unknown) {

@@ -1,6 +1,6 @@
 import { Context, MiddlewareFn } from '../deps.ts';
 import { InfoMedia, InfoMediaSource, InfoSearchMedia, SourceType } from '../types/manga.ts';
-import { Service } from '../types/service.ts';
+import { Service, SourcesFlavor } from '../types/services.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
 import { Bottleneck } from '../deps.ts';
@@ -15,7 +15,6 @@ class Sources<
     constructor(sources?: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>, options?: Bottleneck.ConstructorOptions) {
         super();
         this.limiter = new Bottleneck.Group(options);
-        // console.log(options);
         this.register(...sources ?? []);
     }
 
@@ -34,7 +33,6 @@ class Sources<
     middleware(): MiddlewareFn<C> {
         return async (ctx, next) => {
             const chatLimiter: Bottleneck = this.limiter.key(ctx.chat?.id);
-
             ctx.sources = {
                 getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
                 getFromId: (...args) => this.getFromId(chatLimiter, ...args),
@@ -78,13 +76,4 @@ class Sources<
     }
 }
 
-interface SourcesFlavor {
-    sources: {
-        getFromId: (tag: string, id: number, callback: (result?: InfoMedia | undefined) => void) => void
-        getFromFID: (fid: string, callback: (result?: InfoMedia | undefined) => void) => void
-        searchFromTag: (tag: string, search: string, callback: (result?: InfoSearchMedia[] | undefined) => void) => void,
-        list: SourceType[]
-    }
-}
-
-export { Sources, Anilist, MangaUpdates, type SourcesFlavor };
+export { Sources, Anilist, MangaUpdates };

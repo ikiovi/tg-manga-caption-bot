@@ -1,5 +1,5 @@
 import { Context, SessionFlavor, I18nFlavor } from '../deps.ts';
-import { SourcesFlavor } from '../services/sources.ts';
+import { SourcesFlavor } from './services.ts';
 import { Empty } from './utils.ts';
 
 type BaseContext<T extends SessionData | Partial<SessionData>> = Context & I18nFlavor & SourcesFlavor & SessionFlavor<T>;

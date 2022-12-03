@@ -18,7 +18,7 @@ const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
     highWater: +(Deno.env.get('RL_MAXQUEUE') ?? 3),
     strategy: Bottleneck.strategy.OVERFLOW
 });
-const idRegex = () => new RegExp('^' + sources.regex?.source + '$');
+const idRegex = (prefix?: string) => new RegExp('^' + prefix + sources.regex?.source + '$');
 
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
@@ -100,7 +100,7 @@ bot.inlineQuery(idRegex(), async ctx => {
     });
 });
 
-bot.callbackQuery(new RegExp('^get:' + sources.regex?.source + '$'), async ctx => {
+bot.callbackQuery(idRegex('get:'), async ctx => {
     await ctx.answerCallbackQuery();
     await getIdHandler(ctx);
 });
@@ -120,11 +120,12 @@ function getIdHandler(ctx: EmptySessionContext) {
     if (!groups) return;
 
     const { tag, id } = groups;
+    const options = { parse_mode: 'HTML' } as const;
     ctx.sources.getFromId(tag, +id, async result => {
         if (!result) return;
         const caption = getPreviewCaption(tag, id, result);
         if (result.source.previewType == 'Cover' && result.image)
-            return await ctx.replyWithPhoto(result.image, { caption, parse_mode: 'HTML' });
-        await ctx.reply(caption, { parse_mode: 'HTML' });
+            return await ctx.replyWithPhoto(result.image, { ...options, caption });
+        await ctx.reply(caption, options);
     });
 }

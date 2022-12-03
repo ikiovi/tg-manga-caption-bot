@@ -3,8 +3,8 @@ import { CaptionInfo, InfoMedia, MangaType } from '../types/manga.ts';
 function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
     const tags = parseTags([`${tag}${id}`, type, ...genres ?? []]);
-    const title = typeof info.title === 'string'
-        ? info.title : info.title.filter(t => t !== undefined)[0];
+    const title = Array.isArray(info.title)
+        ? info.title.filter(t => t !== undefined)[0] : info.title;
 
     return `${tags}\n${textToCode(title)}`;
 }
@@ -32,8 +32,8 @@ function parseSynonyms(synonyms: string[], title: string, max = 10): { hasEqualV
     for (let i = 0, c = 0; i < synonyms.length && c < max; i++) {
         if (!(synonyms[i])) continue;
         if (synonyms[i] == title) return { hasEqualValue: true, synonyms: undefined };
-        if (synonyms[i].match(title_regex)){
-            if(text) text += '\n';
+        if (synonyms[i].match(title_regex)) {
+            if (text) text += '\n';
             text += textToCode(synonyms[i]);
             c++;
         }

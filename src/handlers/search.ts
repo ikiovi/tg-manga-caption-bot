@@ -9,11 +9,11 @@ export const search = new Composer<SearchContext>().chatType('private');
 
 search.command(['setSource', 'setsource'], async ctx => {
     const keyboard = ctx.sources.list.reduce<InlineKeyboard>(
-            (k, { tag }) => k.text(
-                ctx.t('source-' + tag.toLowerCase()),
-                'search:' + tag
-            ), new InlineKeyboard()
-        );
+        (k, { tag }) => k.text(
+            ctx.t('source-' + tag.toLowerCase()),
+            'search:' + tag
+        ), new InlineKeyboard()
+    );
 
     await ctx.reply(ctx.t('select-source'), { reply_markup: keyboard });
 });

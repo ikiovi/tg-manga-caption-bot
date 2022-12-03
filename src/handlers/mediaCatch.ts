@@ -41,14 +41,14 @@ export function process(ctx: MediaContext) {
     const { tag, id } = ctx.session.current.match ?? {};
     if (!tag || !id) return;
 
-    ctx.sources.getFromId(tag, id, result => {
+    ctx.sources.getFromId(tag, id, async result => {
         if (!result?.caption) return;
 
         const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;
         const params = { message_id, caption: result.caption, isDocument: !!document };
 
-        if (!media_group_id) return processSingle(ctx, params);
-        processGroup(ctx, { ...params, media_group_id, chat_id });
+        if (!media_group_id) return await processSingle(ctx, params);
+        await processGroup(ctx, { ...params, media_group_id, chat_id });
     });
 }
 
@@ -59,7 +59,7 @@ async function processSingle(ctx: MediaContext, params: { message_id: number, ca
     const options = { caption, parse_mode: 'HTML' } as const;
     if (!file_id || message_id != id) return;
 
-    await ctx.deleteMessage();
+    ctx.deleteMessage();
     if (isDocument) return await ctx.replyWithDocument(file_id, options);
     await ctx.replyWithPhoto(file_id, options);
 }
