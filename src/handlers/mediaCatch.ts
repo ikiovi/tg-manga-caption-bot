@@ -1,5 +1,6 @@
 import { Composer, InputMediaDocument, InputMediaPhoto, Message } from '../deps.ts';
 import { MediaContext } from '../types/context.ts';
+import { InfoMedia } from '../types/manga.ts';
 
 export const media = new Composer<MediaContext>().chatType('channel');
 
@@ -39,17 +40,21 @@ function setupCatch<T extends MediaContext & { channelPost: Message }>(ctx: T, f
 export function process(ctx: MediaContext) {
     if (!ctx.channelPost) return;
     const { tag, id } = ctx.session.current.match ?? {};
+    ctx.session.current.shouldCatch = false;
     if (!tag || !id) return;
 
     ctx.sources.getFromId(tag, id, async result => {
-        if (!result?.caption) return;
-
-        const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;
-        const params = { message_id, caption: result.caption, isDocument: !!document };
-
-        if (!media_group_id) return await processSingle(ctx, params);
-        await processGroup(ctx, { ...params, media_group_id, chat_id });
+        if (result?.caption) await processResult(ctx, result);
+        ctx.session.current = {}; //
     });
+}
+
+async function processResult(ctx: MediaContext, result: InfoMedia) {
+    const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;
+    const params = { message_id, caption: result.caption, isDocument: !!document };
+
+    if (!media_group_id) await processSingle(ctx, params);
+    else await processGroup(ctx, { ...params, media_group_id, chat_id });
 }
 
 async function processSingle(ctx: MediaContext, params: { message_id: number, caption: string, isDocument: boolean }) {

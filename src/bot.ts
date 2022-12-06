@@ -18,7 +18,7 @@ const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
     highWater: +(Deno.env.get('RL_MAXQUEUE') ?? 3),
     strategy: Bottleneck.strategy.OVERFLOW
 });
-const idRegex = (prefix?: string) => new RegExp('^' + prefix + sources.regex?.source + '$');
+const idRegex = (prefix = '') => new RegExp('^' + prefix + sources.regex?.source + '$');
 
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
