@@ -61,7 +61,7 @@ class Sources<
         if (!groups) return;
 
         const { tag, id } = groups;
-        if (!tag || !(+id)) return;
+        if (!tag || !id) return;
         return { tag, id: +id };
     }
 
