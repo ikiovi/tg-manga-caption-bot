@@ -9,7 +9,7 @@ import { getFromMatch, getRegexFromSources } from '../utils/utils.ts';
 class Sources<
     C extends Context & SourcesFlavor
 > extends Map<string, InfoMediaSource> implements Service<C> {
-    private limiter: Bottleneck;
+    private limiter: Bottleneck.Group;
     regex?: RegExp;
 
     constructor(sources?: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>, options?: Bottleneck.ConstructorOptions) {
@@ -21,7 +21,7 @@ class Sources<
     register(...sources: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>) {
         sources.forEach((source) => {
             if (typeof source == 'function') source = new source();
-            if (source.tag == null) {
+            if (!source.tag) {
                 throw new Error('Unsupported source!');
             }
             this.set(source.tag, source);
@@ -32,7 +32,7 @@ class Sources<
 
     middleware(): MiddlewareFn<C> {
         return async (ctx, next) => {
-            const chatLimiter: Bottleneck = this.limiter.key(ctx.chat?.id);
+            const chatLimiter: Bottleneck = this.limiter.key(`${ctx.chat?.id}`);
             ctx.sources = {
                 getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
                 getFromId: (...args) => this.getFromId(chatLimiter, ...args),

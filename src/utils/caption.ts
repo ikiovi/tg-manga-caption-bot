@@ -4,7 +4,7 @@ function getCaption(info: CaptionInfo): string {
     const { id, genres, type, source: { tag } } = info;
     const tags = parseTags([`${tag}${id}`, type, ...genres ?? []]);
     const title = Array.isArray(info.title)
-        ? info.title.filter(t => t !== undefined)[0] : info.title;
+        ? info.title.filter(Boolean)[0] : info.title;
 
     return `${tags}\n${textToCode(title)}`;
 }
