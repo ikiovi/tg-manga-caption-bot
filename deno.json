@@ -5,6 +5,6 @@
   },
   "include": ["src/"],
   "tasks": {
-    "start":"deno run --allow-env --allow-read --allow-net --allow-write src/bot.ts"
+    "start":"deno run --allow-env --allow-read --allow-net src/bot.ts"
   }
 }
