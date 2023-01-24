@@ -4,11 +4,11 @@ import { InfoMedia } from '../types/manga.ts';
 
 export const media = new Composer<MediaContext>().chatType('channel');
 
-media.on(':photo', ctx => {
+media.on(':photo', async ctx => {
     setupCatch(ctx, ctx.channelPost.photo[0]);
 });
 
-media.on(':document', ctx => {
+media.on(':document', async ctx => {
     setupCatch(ctx, ctx.channelPost.document);
 });
 
@@ -38,15 +38,9 @@ function setupCatch<T extends MediaContext & { channelPost: Message }>(ctx: T, f
 }
 
 export function process(ctx: MediaContext) {
-    if (!ctx.channelPost) return;
-    const { tag, id } = ctx.session.current.match ?? {};
-    ctx.session.current.shouldCatch = false;
-    if (!tag || !id) return;
-
-    ctx.sources.getFromId(tag, id, async result => {
-        if (result?.caption) await processResult(ctx, result);
-        ctx.session.current = {}; //
-    });
+    const cleanUp = () => ctx.session.current = {};
+    if (!ctx.channelPost || !ctx.session.current.infoMedia) return cleanUp();
+    processResult(ctx, ctx.session.current.infoMedia).finally(() => setTimeout(cleanUp, 3000));
 }
 
 async function processResult(ctx: MediaContext, result: InfoMedia) {

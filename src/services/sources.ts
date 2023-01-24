@@ -1,5 +1,5 @@
 import { Context, MiddlewareFn } from '../deps.ts';
-import { InfoMedia, InfoMediaSource, InfoSearchMedia, SourceType } from '../types/manga.ts';
+import { InfoMediaSource, SourceType } from '../types/manga.ts';
 import { Service, SourcesFlavor } from '../types/services.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
@@ -37,22 +37,32 @@ class Sources<
                 getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
                 getFromId: (...args) => this.getFromId(chatLimiter, ...args),
                 searchFromTag: (...args) => this.searchFromTag(chatLimiter, ...args),
+                getFromTitle: (...args) => this.getFromTitle(chatLimiter, ...args),
                 list: this.list
             };
             return await next();
         };
     }
 
-    private getFromId(limiter: Bottleneck, tag: string, id: number, callback: (result?: InfoMedia | undefined) => void) {
+    private getFromId(limiter: Bottleneck, tag: string, id: number) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
-        if (!source || !id) return;
-        source.getById(id, callback);
+        if (!source || !id) return Promise.reject<undefined>();
+        return source.getById(id);
     }
 
-    private searchFromTag(limiter: Bottleneck, tag: string, search: string, callback: (result?: InfoSearchMedia[] | undefined) => void) {
+    private searchFromTag(limiter: Bottleneck, tag: string, search: string) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
-        if (!source || !search) return;
-        source.searchByTitle(search, callback);
+        if (!source || !search) return Promise.reject<undefined>();
+        return source.searchByTitle(search);
+    }
+
+    private async getFromTitle(limiter: Bottleneck, title: string) {
+        if (!title) return Promise.reject<undefined>();
+        for (const source of this.values()) {
+            const result = await source.where({ fetch: limiter.wrap(fetch) }).getByTitle(title);
+            if (result) return result;
+        }
+        return Promise.reject<undefined>();
     }
 
     private parseFID(fid: string): { tag: string, id: number } | undefined {
@@ -65,10 +75,10 @@ class Sources<
         return { tag, id: +id };
     }
 
-    private getFromFID(limiter: Bottleneck, fid: string, callback: (result?: InfoMedia | undefined) => void) {
+    private getFromFID(limiter: Bottleneck, fid: string) {
         const { tag, id } = this.parseFID(fid) ?? {};
-        if (!tag || !id) return;
-        this.getFromId(limiter, tag, id, callback);
+        if (!tag || !id) return Promise.reject<undefined>();
+        return this.getFromId(limiter, tag, id);
     }
 
     public get list(): SourceType[] {

@@ -1,4 +1,5 @@
 import { Context, SessionFlavor, I18nFlavor } from '../deps.ts';
+import { InfoMedia } from './manga.ts';
 import { SourcesFlavor } from './services.ts';
 import { Empty } from './utils.ts';
 
@@ -9,12 +10,12 @@ type SearchContext = BaseContext<SearchSessionData>;
 type EmptySessionContext = BaseContext<Empty>;
 type SessionData = MediaSessionData & SearchSessionData;
 
-interface MediaSessionData{
+interface MediaSessionData {
     current: {
         id?: string | number
         media?: string | Record<number, string>
+        infoMedia?: InfoMedia
         timer?: number
-        match?: { tag: string, id: number }
         shouldCatch?: boolean
     }
 }

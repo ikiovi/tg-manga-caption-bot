@@ -23,9 +23,10 @@ interface InfoMediaSource extends SourceType {
     readonly link: string
     readonly api: string
     fetch(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>
-    where(args: Partial<InfoMediaSource>): InfoMediaSource;
-    searchByTitle(search: string, callback: (result?: InfoSearchMedia[]) => void): void
-    getById(id: number, callback: (result?: InfoMedia) => void): void
+    where(args: Partial<InfoMediaSource>): InfoMediaSource
+    searchByTitle(search: string): Promise<InfoSearchMedia[] | undefined>
+    getByTitle(title: string): Promise<InfoMedia | undefined>
+    getById(id: number): Promise<InfoMedia | undefined>
 }
 
 const mangaTypes = ['Manga', 'Manhwa', 'Manhua', 'Novel', 'OEL',

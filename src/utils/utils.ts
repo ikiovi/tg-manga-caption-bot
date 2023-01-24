@@ -16,13 +16,13 @@ function where<T extends object, F = T>(this: T, args?: Partial<F>): T {
 }
 
 //#region Handlers
-function handleResponse(response: Response) {
-    return response.json().then(json => response.ok ? json : Promise.reject(json));
+function handleResponse<T>(response: Response) {
+    return response.json().then(json => response.ok ? <T>json : Promise.reject(json));
 }
 
 function handleError(error: unknown) {
-    const { message, constructor } = <Error>error;
-    console.error(`[${constructor.name}] ${message}`);
+    const { message, name, constructor } = <Error>error;
+    console.error(`[${name}][${constructor.name}] ${message}`);
 }
 //#endregion
 

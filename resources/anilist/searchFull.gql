@@ -1,0 +1,19 @@
+query ($id: Int, $search: String) { 
+
+  Page { 
+    media(id: $id, search: $search, type: MANGA) {
+      id
+      title {
+        romaji,
+        english
+      }
+      coverImage {
+        extraLarge
+      }
+      synonyms
+      genres
+      siteUrl
+      countryOfOrigin
+    }
+  }
+}

@@ -15,13 +15,13 @@ type AnilistMedia = {
 
 type AnilistSearchMedia = Omit<AnilistMedia, 'genres' | 'siteUrl' | 'coverImage' | 'countryOfOrigin'>;
 
-type AnilistSearchData = {
+type AnilistSearchData<M extends AnilistSearchMedia = AnilistSearchMedia> = {
     data: {
-        pageInfo:{
+        pageInfo: {
             total: number
         }
         Page: {
-            media: AnilistSearchMedia[]
+            media: M[]
         }
     }
 }

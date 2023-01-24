@@ -29,40 +29,39 @@ search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
     await ctx.editMessageText(ctx.t('current-source', { name }), { reply_markup: undefined, parse_mode: 'HTML' });
 });
 
-search.on(':text', ctx => {
+search.on(':text', async ctx => {
     const { source } = ctx.session.private;
     if (!source) return;
     const { text } = ctx.message;
-    ctx.sources.searchFromTag(source, text, media => {
-        if (!media) return;
-        const { message, result, keyboard } = parseMedia(media, text);
-        if (!result) return ctx.reply(ctx.t(message));
-        ctx.reply(message, { reply_markup: keyboard, parse_mode: 'HTML' });
-    });
+    const media = await ctx.sources.searchFromTag(source, text);
+    if (!media) return;
+    const { message, result, keyboard } = parseMedia(media, text);
+    if (!result) return ctx.reply(ctx.t(message));
+    ctx.reply(message, { reply_markup: keyboard, parse_mode: 'HTML' });
 });
 
-
+//??
 function parseMedia(media: InfoSearchMedia[], search: string): { keyboard?: InlineKeyboard, message: string, result: boolean } {
     if (!media.length) return { keyboard: undefined, message: 'title-not-found', result: false };
-
-    let message = '';
-    const keyboard = inlineKeyboardFromArray<InfoSearchMedia>(media,
-        (value, i) => {
-            const { id, source, title } = value;
-            let current = '';
-            if (Array.isArray(title)) {
-                const { hasEqualValue, synonyms } = parseSynonyms(title, search);
-                if (hasEqualValue || synonyms) current = (hasEqualValue ? textToCode(search) : synonyms) + '\n';
-                else current = textToCode(title[0]) + '\n';
-            }
-            if (!current) current = `${textToCode(title)}\n`;
-            message += `${i + 1}. ` + current + '\n';
-
-            return {
-                text: `${i + 1}`,
-                callback_data: `get:${source.tag}${id}`
-            };
-        }
-    );
-    return { keyboard, message, result: true };
+    const message: string[] = [];
+    const keyboard = inlineKeyboardFromArray<InfoSearchMedia>(media, (...args) => inlineButtonFromMedia(...args, message, search));
+    return { keyboard, message: message.join('\n'), result: true };
 }
+
+function inlineButtonFromMedia(media: InfoSearchMedia, index: number, message: string[], search: string) {
+    const { id, source, title } = media;
+    let current = '';
+    if (Array.isArray(title)) {
+        const { hasEqualValue, synonyms } = parseSynonyms(title, search);
+        if (hasEqualValue || synonyms) current = (hasEqualValue ? textToCode(search) : synonyms) + '\n';
+        else current = textToCode(title[0]) + '\n';
+    }
+    if (!current) current = `${textToCode(title)}\n`;
+    message.push(`${index + 1}. ` + current);
+
+    return {
+        text: `${index + 1}`,
+        callback_data: `get:${source.tag}${id}`
+    };
+}
+//

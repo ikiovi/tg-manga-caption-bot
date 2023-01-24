@@ -1,7 +1,7 @@
 import { getCaption } from '../../../utils/caption.ts';
 import { handleError, handleResponse, where } from '../../../utils/utils.ts';
-import { MangaUpdatesData, MangaUpdatesMedia } from './types.ts';
-import { InfoMedia, InfoMediaSource, InfoSearchMedia, PreviewType } from '../../../types/manga.ts';
+import { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia } from './types.ts';
+import { InfoMedia, InfoMediaSource, PreviewType } from '../../../types/manga.ts';
 
 export class MangaUpdates implements InfoMediaSource {
     readonly tag = 'MU';
@@ -24,7 +24,41 @@ export class MangaUpdates implements InfoMediaSource {
         setInterval(() => this.cache.clear(), +(Deno.env.get('CACHE_MINUTES') ?? 5) * 2000);
     }
 
-    searchByTitle(search: string, callback: (result?: InfoSearchMedia[] | undefined) => void): void {
+    searchByTitle(search: string) {
+        return this.searchTitle(search);
+    }
+
+    getById(id: number) {
+        const path = `series/${id}`;
+        const options = {
+            method: 'GET',
+            ...this.requestOptions,
+        };
+
+        const cached = this.tryGetCachedMedia(id);
+        if (cached)
+            return Promise.resolve(cached);
+
+        return this.callApi<MangaUpdatesMedia>(path, options)
+            .then(response => {
+                if (!response) return undefined;
+                const result = this.parseMangaUpdatesMedia(response);
+                this.cacheMedia(result);
+                return result;
+            });
+    }
+
+    getByTitle(title: string) {
+        return this.searchTitle(title).then(result => result?.at(0));
+    }
+
+    private callApi<T extends MangaUpdatesMedia | MangaUpdatesData>(path: string, options: RequestInit) {
+        return this.fetch(this.api + path, options)
+            .then(handleResponse<T>)
+            .catch(handleError);
+    }
+
+    private searchTitle(search: string): Promise<InfoMedia[] | undefined> {
         const path = 'series/search';
         const options = {
             method: 'POST',
@@ -34,52 +68,33 @@ export class MangaUpdates implements InfoMediaSource {
             })
         };
 
-        this.callApi<MangaUpdatesData>(path, options, ({results}) => {
-            const result: InfoSearchMedia[] = [];
-            let count = 0;
-            for (const { record } of results) {
-                const media = this.parseMangaUpdatesMedia(record);
-                result.push(media);
-                if (this.cache.has(record.series_id) || count > 7) continue; // -_-
-                this.cache.set(media.id, media);
-                count++;
-            }
-            callback(result);
-        });
+        return this.callApi<MangaUpdatesData>(path, options)
+            .then(response => response?.results?.map(this.parseMangaUpdatesSearchMedia.bind(this)));
     }
 
-    getById(id: number, callback: (result?: InfoMedia | undefined) => void): void {
-        const path = `series/${id}`;
-        const options = {
-            method: 'GET',
-            ...this.requestOptions,
-        };
-
-        if (this.cache.has(id))
-            return callback(this.cache.get(id));
-
-        this.callApi(path, options, (response: MangaUpdatesMedia) => {
-            const result = this.parseMangaUpdatesMedia(response);
-            this.cache.set(result.id, result);
-            callback(result);
-        });
+    private cacheMedia(media: InfoMedia) {
+        this.cache.set(media.id, media);
     }
 
-    private callApi<T extends MangaUpdatesMedia | MangaUpdatesData>(path: string, options: RequestInit, callback: (result: T) => void) {
-        this.fetch(this.api + path, options)
-            .then(handleResponse)
-            .then(callback)
-            .catch(handleError);
+    private tryGetCachedMedia(id: number): InfoMedia | undefined {
+        return this.cache.get(id);
+    }
+
+    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia, index: number): InfoMedia {
+        const result = this.parseMangaUpdatesMedia(media?.record);
+        if (index < 5) this.cacheMedia(result);
+        return result;
     }
 
     private parseMangaUpdatesMedia(media: MangaUpdatesMedia): InfoMedia {
+        console.log('A');
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,
             link,
             title,
             source: this,
-            genres: genres?.map(g => g.genre),
+            genres: genres?.map(g => g?.genre),
             image: image.url.original
         };
 

@@ -21,21 +21,31 @@ export class Anilist implements InfoMediaSource {
 
     private readonly queries = resolve('./resources/anilist/');
 
-    searchByTitle(search: string, callback: (result?: InfoSearchMedia[] | undefined) => void): void {
+    searchByTitle(search: string) {
         const query = Deno.readTextFileSync(join(this.queries, 'search.gql'));
-        this.callApi<AnilistSearchData>(query, { search }, ({ data: { Page: { media } } }) => {
-            callback(media.map(m => this.parseAnilistSearchMedia(m, this)));
-        });
+        return this.callApi<AnilistSearchData>(query, { search })
+            .then(r => r?.data?.Page?.media?.map(m => this.parseAnilistSearchMedia(m, this)));
     }
 
-    getById(id: number, callback: (result?: InfoMedia) => void): void {
+    getById(id: number) {
         const query = Deno.readTextFileSync(join(this.queries, 'get.gql'));
-        this.callApi<AnilistData>(query, { id }, ({ data: { Media } }) => {
-            callback(this.parseAnilistMedia(Media));
-        });
+        return this.callApi<AnilistData>(query, { id })
+            .then(result => {
+                const media = result?.data?.Media;
+                return !media ? undefined : this.parseAnilistMedia(media);
+            });
     }
 
-    private callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number; }, callback: (data: T) => void) {
+    getByTitle(title: string) {
+        const query = Deno.readTextFileSync(join(this.queries, 'searchFull.gql'));
+        return this.callApi<AnilistSearchData<AnilistMedia>>(query, { search: title })
+            .then(result => {
+                const media = result?.data?.Page?.media?.at(0);
+                return !media ? undefined : this.parseAnilistMedia(media);
+            });
+    }
+
+    private async callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number; }) {
         const options = {
             ...this.requestOptions,
             body: JSON.stringify({
@@ -43,9 +53,8 @@ export class Anilist implements InfoMediaSource {
                 variables
             })
         };
-        this.fetch(this.api, options)
-            .then(handleResponse)
-            .then(callback)
+        return this.fetch(this.api, options)
+            .then(handleResponse<T>)
             .catch(handleError);
     }
 

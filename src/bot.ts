@@ -1,5 +1,5 @@
 import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
-import { Bot, Bottleneck, Composer, I18n, session } from './deps.ts';
+import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
@@ -37,7 +37,6 @@ bot.use(i18n, sources);
 //#endregion
 
 //#region Handlers Registration
-
 const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
 
@@ -48,15 +47,19 @@ bot.chatType('private', chatMessage, search);
 //#region Channel Post
 
 channelPost.hears(idRegex(), async (ctx, next) => {
-    const groups = getFromMatch(ctx.match);
-    if (!groups) return;
+    const { session: { current } } = ctx;
+    if (current.shouldCatch) ctx.session.current = {};
+    current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
+    await startMediaHandle(ctx, next);
+});
 
-    const { tag, id } = groups;
-    const { channelPost: { caption }, session: { current } } = ctx;
-    current.match = { tag, id: +id };
-    current.shouldCatch = true;
-    if (!caption) ctx.deleteMessage();
-    await next();
+channelPost.hears(/-s (?<Search>.+)/i, async (ctx, next) => {
+    const searchQuery = ctx.match[1];
+    if (!searchQuery) return;
+    const { current } = ctx.session;
+    if (current.shouldCatch) ctx.session.current = {};
+    current.infoMedia = await ctx.sources.getFromTitle(searchQuery);
+    await startMediaHandle(ctx, next);
 });
 
 channelPost.drop(ctx => !ctx.session.current.shouldCatch, media);
@@ -79,25 +82,24 @@ bot.inlineQuery(idRegex(), async ctx => {
     if (!groups) return;
 
     const { tag, id } = groups;
-    ctx.sources.getFromId(tag, +id, async result => {
-        if (!result) return;
-        const caption = getPreviewCaption(tag, id, result);
+    const result = await ctx.sources.getFromId(tag, +id);
+    if (!result) return;
+    const caption = getPreviewCaption(tag, id, result);
 
-        await ctx.answerInlineQuery([{
-            type: 'article',
-            id: tag + id,
-            title: Array.isArray(result.title) ? result.title[0] : result.title,
-            url: result.link,
-            hide_url: true,
-            thumb_url: result.image,
-            input_message_content: {
-                message_text: caption,
-                photo_url: result.image,
-                disable_web_page_preview: false,
-                parse_mode: 'HTML'
-            }
-        }]);
-    });
+    await ctx.answerInlineQuery([{
+        type: 'article',
+        id: tag + id,
+        title: Array.isArray(result.title) ? result.title[0] : result.title,
+        url: result.link,
+        hide_url: true,
+        thumb_url: result.image,
+        input_message_content: {
+            message_text: caption,
+            photo_url: result.image,
+            disable_web_page_preview: false,
+            parse_mode: 'HTML'
+        }
+    }]);
 });
 
 bot.callbackQuery(idRegex('get:'), async ctx => {
@@ -115,17 +117,24 @@ bot.start();
 
 Deno.addSignalListener('SIGINT', () => bot.stop());
 
-function getIdHandler(ctx: EmptySessionContext) {
+async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
+    const { current } = ctx.session;
+    if (!current.infoMedia) return;
+    current.shouldCatch = true;
+    if (!ctx?.channelPost?.caption) ctx.deleteMessage();
+    await next();
+}
+
+async function getIdHandler(ctx: EmptySessionContext) {
     const groups = getFromMatch(ctx.match);
     if (!groups) return;
 
     const { tag, id } = groups;
     const options = { parse_mode: 'HTML' } as const;
-    ctx.sources.getFromId(tag, +id, async result => {
-        if (!result) return;
-        const caption = getPreviewCaption(tag, id, result);
-        if (result.source.previewType == 'Cover' && result.image)
-            return await ctx.replyWithPhoto(result.image, { ...options, caption });
-        await ctx.reply(caption, options);
-    });
+    const result = await ctx.sources.getFromId(tag, +id);
+    if (!result) return;
+    const caption = getPreviewCaption(tag, id, result);
+    if (result.source.previewType == 'Cover' && result.image)
+        return await ctx.replyWithPhoto(result.image, { ...options, caption });
+    await ctx.reply(caption, options);
 }
