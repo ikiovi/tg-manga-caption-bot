@@ -1,5 +1,5 @@
 import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
-import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext } from './deps.ts';
+import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
@@ -45,10 +45,10 @@ bot.chatType('private', chatMessage, search);
 //#endregion
 
 //#region Channel Post
-
 channelPost.hears(idRegex(), async (ctx, next) => {
     const { session: { current } } = ctx;
     if (current.shouldCatch) ctx.session.current = {};
+    logger.info(`Getting info by id [${ctx.match[0]}]`);
     current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
     await startMediaHandle(ctx, next);
 });
@@ -58,6 +58,7 @@ channelPost.hears(/-s (?<Search>.+)/i, async (ctx, next) => {
     if (!searchQuery) return;
     const { current } = ctx.session;
     if (current.shouldCatch) ctx.session.current = {};
+    logger.info(`Getting info by title [${searchQuery}]`);
     current.infoMedia = await ctx.sources.getFromTitle(searchQuery);
     await startMediaHandle(ctx, next);
 });
@@ -107,12 +108,7 @@ bot.callbackQuery(idRegex('get:'), async ctx => {
     await getIdHandler(ctx);
 });
 
-bot.catch(err => {
-    const date = new Date();
-    const dateString = `\x1b[41m[${date.toLocaleDateString()} ${date.toLocaleTimeString()}]\x1b[0m`;
-    console.error(dateString, `[${err.name}] ${err.message}`);
-});
-
+bot.catch(err => logger.error(`${err.name} / ${err.message}`));
 bot.start();
 
 Deno.addSignalListener('SIGINT', () => bot.stop());
@@ -120,6 +116,7 @@ Deno.addSignalListener('SIGINT', () => bot.stop());
 async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
     const { current } = ctx.session;
     if (!current.infoMedia) return;
+    logger.info('Media handling started');
     current.shouldCatch = true;
     if (!ctx?.channelPost?.caption) ctx.deleteMessage();
     await next();

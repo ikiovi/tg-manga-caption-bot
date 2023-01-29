@@ -19,7 +19,7 @@ class Sources<
     }
 
     register(...sources: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>) {
-        sources.forEach((source) => {
+        sources.forEach(source => {
             if (typeof source == 'function') source = new source();
             if (!source.tag) {
                 throw new Error('Unsupported source!');
