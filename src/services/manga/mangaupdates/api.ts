@@ -36,8 +36,7 @@ export class MangaUpdates implements InfoMediaSource {
         };
 
         const cached = this.tryGetCachedMedia(id);
-        if (cached)
-            return Promise.resolve(cached);
+        if (cached) return Promise.resolve(cached);
 
         return this.callApi<MangaUpdatesMedia>(path, options)
             .then(response => {
@@ -64,7 +63,9 @@ export class MangaUpdates implements InfoMediaSource {
             method: 'POST',
             ...this.requestOptions,
             body: JSON.stringify({
-                search
+                search,
+                perpage: 15,
+                include_rank_metadata: false
             })
         };
 
@@ -87,7 +88,6 @@ export class MangaUpdates implements InfoMediaSource {
     }
 
     private parseMangaUpdatesMedia(media: MangaUpdatesMedia): InfoMedia {
-        console.log('A');
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,

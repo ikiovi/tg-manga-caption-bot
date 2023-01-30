@@ -46,20 +46,23 @@ bot.chatType('private', chatMessage, search);
 
 //#region Channel Post
 channelPost.hears(idRegex(), async (ctx, next) => {
-    const { session: { current } } = ctx;
-    if (current.shouldCatch) ctx.session.current = {};
+    const { shouldCatch } = ctx.session.current;
+    if (shouldCatch) ctx.session.current = {};
+
     logger.info(`Getting info by id [${ctx.match[0]}]`);
-    current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
+    ctx.session.current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
     await startMediaHandle(ctx, next);
 });
 
 channelPost.hears(/-s (?<Search>.+)/i, async (ctx, next) => {
     const searchQuery = ctx.match[1];
     if (!searchQuery) return;
-    const { current } = ctx.session;
-    if (current.shouldCatch) ctx.session.current = {};
+
+    const { shouldCatch } = ctx.session.current;
+    if (shouldCatch) ctx.session.current = {};
+
     logger.info(`Getting info by title [${searchQuery}]`);
-    current.infoMedia = await ctx.sources.getFromTitle(searchQuery);
+    ctx.session.current.infoMedia = await ctx.sources.getFromTitle(searchQuery);
     await startMediaHandle(ctx, next);
 });
 
@@ -79,12 +82,12 @@ chatMessage.hears(idRegex(), getIdHandler);
 //#endregion
 
 bot.inlineQuery(idRegex(), async ctx => {
-    const groups = getFromMatch(ctx.match);
-    if (!groups) return;
+    const { tag, id } = getFromMatch(ctx.match) ?? {};
+    if (!tag || !id) return;
 
-    const { tag, id } = groups;
     const result = await ctx.sources.getFromId(tag, +id);
     if (!result) return;
+
     const caption = getPreviewCaption(tag, id, result);
 
     await ctx.answerInlineQuery([{
@@ -115,22 +118,23 @@ Deno.addSignalListener('SIGINT', () => bot.stop());
 
 async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
     const { current } = ctx.session;
-    if (!current.infoMedia) return;
+    if (!current?.infoMedia) return logger.warning('Attempt to start media handle without info canceled');
+
     logger.info('Media handling started');
     current.shouldCatch = true;
-    if (!ctx?.channelPost?.caption) ctx.deleteMessage();
     await next();
 }
 
 async function getIdHandler(ctx: EmptySessionContext) {
-    const groups = getFromMatch(ctx.match);
-    if (!groups) return;
+    const { tag, id } = getFromMatch(ctx.match) ?? {};
+    if (!tag || !id) return;
 
-    const { tag, id } = groups;
     const options = { parse_mode: 'HTML' } as const;
     const result = await ctx.sources.getFromId(tag, +id);
     if (!result) return;
+
     const caption = getPreviewCaption(tag, id, result);
+
     if (result.source.previewType == 'Cover' && result.image)
         return await ctx.replyWithPhoto(result.image, { ...options, caption });
     await ctx.reply(caption, options);

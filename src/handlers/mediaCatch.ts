@@ -13,7 +13,7 @@ media.on(':document', ctx => {
 });
 
 function setupCatch<T extends ChatTypeContext<MediaContext, 'channel'>>(ctx: T, file?: { file_id: string }) {
-    if(!ctx.channelPost) throw new Error('Invalid argument');
+    if (!ctx.channelPost) throw new Error('Invalid argument');
     const { media_group_id, message_id, caption } = ctx.channelPost;
     if (!file || (!caption && !media_group_id)) return;
     const { file_id } = file;
@@ -61,7 +61,7 @@ function processSingle(ctx: MediaContext, params: { message_id: number, caption:
     if (!file_id || message_id != id) return;
 
     ctx.deleteMessage();
-    if (isDocument)  ctx.replyWithDocument(file_id, options);
+    if (isDocument) ctx.replyWithDocument(file_id, options);
     ctx.replyWithPhoto(file_id, options);
 }
 

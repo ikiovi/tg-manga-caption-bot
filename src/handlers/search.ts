@@ -1,4 +1,4 @@
-import { Composer, InlineKeyboard } from '../deps.ts';
+import { Composer, InlineKeyboard, logger } from '../deps.ts';
 import { SearchContext } from '../types/context.ts';
 import { InfoSearchMedia } from '../types/manga.ts';
 import { parseSynonyms, textToCode } from '../utils/caption.ts';
@@ -30,11 +30,11 @@ search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
 });
 
 search.on(':text', async ctx => {
-    const { source } = ctx.session.private;
-    if (!source) return;
     const { text } = ctx.message;
-    const media = await ctx.sources.searchFromTag(source, text);
-    if (!media) return;
+    const { session, sources } = ctx;
+    const source = session.private.source ?? sources.list[0].tag;
+    const media = await sources.searchFromTag(source, text);
+    if (!media) return logger.error('Something went wrong');
     const { message, result, keyboard } = parseMedia(media, text);
     if (!result) return ctx.reply(ctx.t(message));
     ctx.reply(message, { reply_markup: keyboard, parse_mode: 'HTML' });

@@ -1,4 +1,4 @@
-import { Context, MiddlewareFn } from '../deps.ts';
+import { Context, logger, MiddlewareFn } from '../deps.ts';
 import { InfoMediaSource, SourceType } from '../types/manga.ts';
 import { Service, SourcesFlavor } from '../types/services.ts';
 import { Anilist } from './manga/anilist/api.ts';
@@ -47,7 +47,10 @@ class Sources<
     private getFromId(limiter: Bottleneck, tag: string, id: number) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !id) return Promise.reject<undefined>();
-        return source.getById(id);
+        return source.getById(id).then(result => {
+            if(!result) logger.warning(`Attempt to obtain information for id ${id} failed. Result is empty.`);
+            return result;
+        });
     }
 
     private searchFromTag(limiter: Bottleneck, tag: string, search: string) {
@@ -65,20 +68,11 @@ class Sources<
         return Promise.reject<undefined>();
     }
 
-    private parseFID(fid: string): { tag: string, id: number } | undefined {
-        const match = this.regex?.exec(fid);
-        const groups = getFromMatch(match);
-        if (!groups) return;
-
-        const { tag, id } = groups;
-        if (!tag || !id) return;
-        return { tag, id: +id };
-    }
-
     private getFromFID(limiter: Bottleneck, fid: string) {
-        const { tag, id } = this.parseFID(fid) ?? {};
-        if (!tag || !id) return Promise.reject<undefined>();
-        return this.getFromId(limiter, tag, id);
+        const match = this.regex?.exec(fid);
+        const { tag, id } = getFromMatch(match) ?? {};
+        if (!tag || !id || isNaN(+id)) return Promise.reject<undefined>();
+        return this.getFromId(limiter, tag, +id);
     }
 
     public get list(): SourceType[] {

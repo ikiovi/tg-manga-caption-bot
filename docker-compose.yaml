@@ -9,3 +9,8 @@ services:
         stop_signal: SIGINT
         restart: on-failure
         env_file: .env
+        logging:
+            options:
+                max-size: 5m
+        
+        

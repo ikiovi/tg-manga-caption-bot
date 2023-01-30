@@ -1,6 +1,6 @@
 query ($id: Int, $search: String) { 
 
-  Page { 
+  Page(page:0, perPage:1) { 
     media(id: $id, search: $search, type: MANGA) {
       id
       title {
