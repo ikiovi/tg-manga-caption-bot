@@ -1,4 +1,4 @@
-import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto } from '../deps.ts';
+import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto, logger } from '../deps.ts';
 import { MediaContext } from '../types/context.ts';
 import { InfoMedia } from '../types/manga.ts';
 
@@ -22,30 +22,30 @@ function setupCatch<T extends ChatTypeContext<MediaContext, 'channel'>>(ctx: T, 
 
     if (!media_group_id) {
         ctx.session.current = { ...current, id: message_id, media: file_id };
-        process(ctx);
+        return process(ctx);
     }
-    else if (current.id != media_group_id) {
+    if (current.id != media_group_id) {
         ctx.session.current = {
             ...current,
             id: media_group_id,
             media: { [message_id]: file_id }
         };
+        return;
     }
-    else {
-        (<Record<number, string>>current.media)[message_id] = file_id;
-        if (current.timer) clearTimeout(current.timer);
-        current.timer = setTimeout(() => process(ctx), 1000);
-    }
+    (<Record<number, string>>current.media)[message_id] = file_id;
+    if (current.timer) clearTimeout(current.timer);
+    current.timer = setTimeout(() => process(ctx), 1000);
 }
 
-export function process(ctx: MediaContext) {
-    const cleanUp = () => ctx.session.current = {};
+export function process(ctx: ChatTypeContext<MediaContext, 'channel'>) {
+    const cleanUp = () => { ctx.session.current = {}; };
     if (!ctx.channelPost || !ctx.session.current.infoMedia) return cleanUp();
+    logger.info('Processing media');
     processResult(ctx, ctx.session.current.infoMedia);
     cleanUp();
 }
 
-function processResult(ctx: MediaContext, result: InfoMedia) {
+function processResult(ctx: ChatTypeContext<MediaContext, 'channel'>, result: InfoMedia) {
     const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;
     const params = { message_id, caption: result.caption, isDocument: !!document };
 
@@ -61,7 +61,7 @@ function processSingle(ctx: MediaContext, params: { message_id: number, caption:
     if (!file_id || message_id != id) return;
 
     ctx.deleteMessage();
-    if (isDocument) ctx.replyWithDocument(file_id, options);
+    if (isDocument) return ctx.replyWithDocument(file_id, options);
     ctx.replyWithPhoto(file_id, options);
 }
 
