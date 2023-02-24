@@ -32,7 +32,7 @@ interface InfoMediaSource extends SourceType {
 const mangaTypes = ['Manga', 'Manhwa', 'Manhua', 'Novel', 'OEL',
     'Artbook', 'Doujinshi', 'Drama CD',
     'Filipino', 'Indonesian', 'Thai', 'Vietnamese',
-    'Malaysian', 'Nordic', 'French', 'Spanish', 'Unknown'] as const; // For runtime checking
+    'Malaysian', 'Nordic', 'French', 'Spanish', 'Unknown'] as const;
 
 type PreviewType = 'Cover' | 'Link';
 type MangaType = typeof mangaTypes[number];

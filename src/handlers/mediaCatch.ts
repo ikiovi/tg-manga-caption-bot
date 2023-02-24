@@ -14,15 +14,15 @@ media.on(':document', ctx => {
 
 function setupCatch<T extends ChatTypeContext<MediaContext, 'channel'>>(ctx: T, file?: { file_id: string }) {
     if (!ctx.channelPost) throw new Error('Invalid argument');
+    const { current } = ctx.session;
     const { media_group_id, message_id, caption } = ctx.channelPost;
     if (!file || (!caption && !media_group_id)) return;
     const { file_id } = file;
 
-    const { current } = ctx.session;
-
     if (!media_group_id) {
         ctx.session.current = { ...current, id: message_id, media: file_id };
-        return process(ctx);
+        process(ctx);
+        return;
     }
     if (current.id != media_group_id) {
         ctx.session.current = {
@@ -32,9 +32,9 @@ function setupCatch<T extends ChatTypeContext<MediaContext, 'channel'>>(ctx: T, 
         };
         return;
     }
-    (<Record<number, string>>current.media)[message_id] = file_id;
+    (<Record<number, string>>ctx.session.current.media)[message_id] = file_id;
     if (current.timer) clearTimeout(current.timer);
-    current.timer = setTimeout(() => process(ctx), 1000);
+    ctx.session.current.timer = setTimeout(() => process(ctx), 1000);
 }
 
 export function process(ctx: ChatTypeContext<MediaContext, 'channel'>) {
@@ -46,7 +46,8 @@ export function process(ctx: ChatTypeContext<MediaContext, 'channel'>) {
 }
 
 function processResult(ctx: ChatTypeContext<MediaContext, 'channel'>, result: InfoMedia) {
-    const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost!;
+    if (!ctx.channelPost) throw new Error('Invalid argument');
+    const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost;
     const params = { message_id, caption: result.caption, isDocument: !!document };
 
     if (!media_group_id) return processSingle(ctx, params);

@@ -48,7 +48,7 @@ export class MangaUpdates implements InfoMediaSource {
     }
 
     getByTitle(title: string) {
-        return this.searchTitle(title).then(result => result?.at(0));
+        return this.searchTitle(title).then(results => results?.at(0));
     }
 
     private callApi<T extends MangaUpdatesMedia | MangaUpdatesData>(path: string, options: RequestInit) {

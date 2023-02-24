@@ -4,7 +4,6 @@ import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
-import { getFromMatch } from './utils/utils.ts';
 import { getPreviewCaption } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
@@ -42,6 +41,7 @@ const chatMessage = new Composer<EmptySessionContext>().chatType('private');
 
 bot.chatType('channel', channelPost);
 bot.chatType('private', chatMessage, search);
+
 //#endregion
 
 //#region Channel Post
@@ -82,17 +82,15 @@ chatMessage.hears(idRegex(), getIdHandler);
 //#endregion
 
 bot.inlineQuery(idRegex(), async ctx => {
-    const { tag, id } = getFromMatch(ctx.match) ?? {};
-    if (!tag || !id) return;
-
-    const result = await ctx.sources.getFromId(tag, +id);
+    if (!ctx.match?.[0]) return;
+    const result = await ctx.sources.getFromFID(ctx.match[0]);
     if (!result) return;
 
-    const caption = getPreviewCaption(tag, id, result);
+    const caption = getPreviewCaption(result);
 
     await ctx.answerInlineQuery([{
         type: 'article',
-        id: tag + id,
+        id: result.source.tag + result.id,
         title: Array.isArray(result.title) ? result.title[0] : result.title,
         url: result.link,
         hide_url: true,
@@ -112,9 +110,9 @@ bot.callbackQuery(idRegex('get:'), async ctx => {
 });
 
 bot.catch(err => logger.error(`${err.name} / ${err.message}`));
-bot.start();
+bot.start({ drop_pending_updates: true });
 
-Deno.addSignalListener('SIGINT', () => bot.stop());
+Deno.addSignalListener('SIGINT', bot.stop);
 
 async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
     const { current } = ctx.session;
@@ -126,14 +124,12 @@ async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, n
 }
 
 async function getIdHandler(ctx: EmptySessionContext) {
-    const { tag, id } = getFromMatch(ctx.match) ?? {};
-    if (!tag || !id) return;
-
+    if (!ctx.match?.[0]) return;
     const options = { parse_mode: 'HTML' } as const;
-    const result = await ctx.sources.getFromId(tag, +id);
+    const result = await ctx.sources.getFromFID(ctx.match[0]);
     if (!result) return;
 
-    const caption = getPreviewCaption(tag, id, result);
+    const caption = getPreviewCaption(result);
 
     if (result.source.previewType == 'Cover' && result.image)
         return await ctx.replyWithPhoto(result.image, { ...options, caption });

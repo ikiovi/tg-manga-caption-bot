@@ -9,8 +9,8 @@ function getCaption(info: CaptionInfo): string {
     return `${tags}\n${textToCode(title)}`;
 }
 
-function getPreviewCaption(tag: string, id: string | number, media: InfoMedia) {
-    return `${media.caption}\n[ <a href="${media.link}">link</a> ] / [ ${textToCode(tag + id)} ]`;
+function getPreviewCaption(media: InfoMedia) {
+    return `${media.caption}\n[ <a href="${media.link}">link</a> ] / [ ${textToCode(media.source.tag + media.id)} ]`;
 }
 
 function parseCountry(country: string): MangaType {

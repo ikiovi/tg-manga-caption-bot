@@ -3,7 +3,7 @@ import { SearchContext } from '../types/context.ts';
 import { InfoSearchMedia } from '../types/manga.ts';
 import { parseSynonyms, textToCode } from '../utils/caption.ts';
 import { inlineKeyboardFromArray } from '../utils/markup.ts';
-import { getFromMatch } from '../utils/utils.ts';
+import { getGroupsFromRegex } from '../utils/utils.ts';
 
 export const search = new Composer<SearchContext>().chatType('private');
 
@@ -20,9 +20,8 @@ search.command(['setSource', 'setsource'], async ctx => {
 
 search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
     await ctx.answerCallbackQuery();
-    const groups = getFromMatch(ctx.match);
-    if (!groups) return;
-    const { tag } = groups;
+    const { tag } = getGroupsFromRegex(ctx.match) ?? {};
+    if (!tag) return;
     ctx.session.private.source = tag;
     const name = ctx.t('source-' + tag.toLowerCase());
     if (!name) return;
@@ -30,8 +29,7 @@ search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
 });
 
 search.on(':text', async ctx => {
-    const { text } = ctx.message;
-    const { session, sources } = ctx;
+    const { session, sources, message: { text } } = ctx;
     const source = session.private.source ?? sources.list[0].tag;
     const media = await sources.searchFromTag(source, text);
     if (!media) return logger.error('Something went wrong');

@@ -5,7 +5,7 @@ function getRegexFromSources(arr: SourceType[]) {
     return new RegExp(`#?(?<tag>${arr.map(s => s.tag).join('|')})(?<id>\\d*)`);
 }
 
-function getFromMatch(match: string | RegExpMatchArray | undefined | null) {
+function getGroupsFromRegex(match: string | RegExpMatchArray | undefined | null) {
     if (!match) return;
     match = match as RegExpMatchArray;
     const groups = match.groups as Record<string, string>;
@@ -28,4 +28,4 @@ function handleError(error: unknown) {
 }
 //#endregion
 
-export { handleResponse, handleError, getRegexFromSources, getFromMatch, where };
+export { handleResponse, handleError, getRegexFromSources, getGroupsFromRegex, where };

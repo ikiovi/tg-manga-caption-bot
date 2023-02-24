@@ -4,7 +4,7 @@ import { Service, SourcesFlavor } from '../types/services.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
 import { Bottleneck } from '../deps.ts';
-import { getFromMatch, getRegexFromSources } from '../utils/utils.ts';
+import { getGroupsFromRegex, getRegexFromSources } from '../utils/utils.ts';
 
 class Sources<
     C extends Context & SourcesFlavor
@@ -70,7 +70,7 @@ class Sources<
 
     private getFromFID(limiter: Bottleneck, fid: string) {
         const match = this.regex?.exec(fid);
-        const { tag, id } = getFromMatch(match) ?? {};
+        const { tag, id } = getGroupsFromRegex(match) ?? {};
         if (!tag || !id || isNaN(+id)) return Promise.reject<undefined>();
         return this.getFromId(limiter, tag, +id);
     }
