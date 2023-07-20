@@ -2,9 +2,9 @@ import { resolve, join } from '../../../deps.ts';
 import { getCaption, parseCountry } from '../../../utils/caption.ts';
 import { handleError, handleResponse, where } from '../../../utils/utils.ts';
 import { AnilistData, AnilistMedia, AnilistSearchData, AnilistSearchMedia } from './types.ts';
-import { InfoMediaSource, PreviewType, InfoSearchMedia, InfoMedia, SourceType } from '../../../types/manga.ts';
+import { TitleInfoProvider, PreviewType, TitleSearchInfo, TitleInfo } from '../../../types/manga.ts';
 
-export class Anilist implements InfoMediaSource {
+export class Anilist implements TitleInfoProvider {
     readonly tag = 'AL';
     readonly link = 'https://anilist.co';
     readonly api = 'https://graphql.anilist.co';
@@ -17,14 +17,17 @@ export class Anilist implements InfoMediaSource {
         }
     };
     readonly fetch = fetch;
-    readonly where = where<Anilist, InfoMediaSource>;
+    readonly where = where<Anilist, TitleInfoProvider>;
 
     private readonly queries = resolve('./resources/anilist/');
 
-    searchByTitle(search: string) {
+    async searchByTitle(search: string, page = 1) {
         const query = Deno.readTextFileSync(join(this.queries, 'search.gql'));
-        return this.callApi<AnilistSearchData>(query, { search })
-            .then(r => r?.data?.Page?.media?.map(m => this.parseAnilistSearchMedia(m, this)));
+        const response = await this.callApi<AnilistSearchData>(query, { search, page });
+        if (!response?.data) return;
+        const { currentPage, hasNextPage } = response.data.Page.pageInfo;
+        const media = response.data.Page.media.map(this.parseAnilistSearchMedia.bind(this));
+        return { currentPage, hasNextPage, media };
     }
 
     getById(id: number) {
@@ -36,16 +39,7 @@ export class Anilist implements InfoMediaSource {
             });
     }
 
-    getByTitle(title: string) {
-        const query = Deno.readTextFileSync(join(this.queries, 'searchFull.gql'));
-        return this.callApi<AnilistSearchData<AnilistMedia>>(query, { search: title })
-            .then(result => {
-                const media = result?.data?.Page?.media?.at(0);
-                return !media ? undefined : this.parseAnilistMedia(media);
-            });
-    }
-
-    private async callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number; }) {
+    private callApi<T extends AnilistData | AnilistSearchData>(query: string, variables: { [k: string]: string | number }) {
         const options = {
             ...this.requestOptions,
             body: JSON.stringify({
@@ -58,27 +52,31 @@ export class Anilist implements InfoMediaSource {
             .catch(handleError);
     }
 
-    private parseAnilistMedia(media: AnilistMedia, source: SourceType = this): InfoMedia {
-        const { siteUrl: link, genres, countryOfOrigin, coverImage: { extraLarge } } = media;
-        const base = this.parseAnilistSearchMedia(media, source);
+    private parseAnilistMedia(media: AnilistMedia): TitleInfo {
+        const { genres, tags, countryOfOrigin, coverImage: { extraLarge } } = media;
+        const base = this.parseAnilistSearchMedia(media);
+        const validTags = tags.map(t => t.name)
+            .filter(t => t.length <= 18 && (/^([a-zA-Z]| |\d)+$/).test(t)) //?
+            .slice(0, 5);
         return {
             ...base,
-            link,
             image: extraLarge,
             caption: getCaption({
                 ...base,
-                genres,
+                genres: genres.concat(validTags),
                 type: parseCountry(countryOfOrigin)
             })
         };
     }
 
-    private parseAnilistSearchMedia(media: AnilistSearchMedia, source: SourceType = this): InfoSearchMedia {
-        const { id, title, synonyms } = media;
+    private parseAnilistSearchMedia(media: AnilistSearchMedia): TitleSearchInfo {
+        const { id, title, synonyms, siteUrl: link, coverImage: { medium } } = media;
         return {
             id,
-            source,
+            link,
+            source: this,
             title: [title.english ?? title.romaji, ...synonyms],
+            image: medium
         };
     }
 }

@@ -3,8 +3,20 @@
     "allowJs": true,
     "noImplicitAny": true
   },
-  "include": ["src/"],
+  "include": [
+    "src/"
+  ],
   "tasks": {
-    "start":"deno run --unstable --allow-env --allow-read --allow-net src/bot.ts"
+    "start": "deno run --unstable --allow-env --allow-read --allow-net src/bot.ts"
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "exclude": [
+        "no-extra-boolean-cast"
+      ]
+    }
   }
 }

@@ -1,5 +1,5 @@
 import { Context, SessionFlavor, I18nFlavor } from '../deps.ts';
-import { InfoMedia } from './manga.ts';
+import { TitleInfo } from './manga.ts';
 import { SourcesFlavor } from './services.ts';
 import { Empty } from './utils.ts';
 
@@ -12,9 +12,9 @@ type SessionData = MediaSessionData & SearchSessionData;
 
 interface MediaSessionData {
     current: {
-        id?: string | number
-        media?: string | Record<number, string>
-        infoMedia?: InfoMedia
+        group_id?: string
+        media?: Map<number, string>
+        infoMedia?: TitleInfo
         timer?: number
         shouldCatch?: boolean
     }

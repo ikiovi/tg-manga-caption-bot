@@ -1,9 +1,9 @@
 import { getCaption } from '../../../utils/caption.ts';
 import { handleError, handleResponse, where } from '../../../utils/utils.ts';
 import { MangaUpdatesData, MangaUpdatesMedia, MangaUpdatesSearchMedia } from './types.ts';
-import { InfoMedia, InfoMediaSource, PreviewType } from '../../../types/manga.ts';
+import { TitleInfo, TitleInfoProvider, PreviewType } from '../../../types/manga.ts';
 
-export class MangaUpdates implements InfoMediaSource {
+export class MangaUpdates implements TitleInfoProvider {
     readonly tag = 'MU';
     readonly link = 'https://mangaupdates.com';
     readonly api = 'https://api.mangaupdates.com/v1/';
@@ -15,17 +15,34 @@ export class MangaUpdates implements InfoMediaSource {
         }
     };
     readonly fetch = fetch;
-    readonly where = where<MangaUpdates, InfoMediaSource>;
+    readonly where = where<MangaUpdates, TitleInfoProvider>;
 
-    private cache: Map<number, InfoMedia>;
+    private cache: Map<number, TitleInfo>;
 
-    constructor(cache?: Map<number, InfoMedia>) {
-        this.cache = cache ?? new Map<number, InfoMedia>();
+    constructor(cache?: Map<number, TitleInfo>) {
+        this.cache = cache ?? new Map<number, TitleInfo>();
         setInterval(() => this.cache.clear(), +(Deno.env.get('CACHE_MINUTES') ?? 5) * 2000);
     }
 
-    searchByTitle(search: string) {
-        return this.searchTitle(search);
+    async searchByTitle(search: string, page = 1) {
+        const path = 'series/search';
+        const perpage = 15;
+        const options = {
+            method: 'POST',
+            ...this.requestOptions,
+            body: JSON.stringify({
+                page,
+                search,
+                perpage,
+                include_rank_metadata: false
+            })
+        };
+
+        const response = await this.callApi<MangaUpdatesData>(path, options);
+        if (!response) return;
+        const { page: currentPage, total_hits, results } = response;
+        const media = results.map(this.parseMangaUpdatesSearchMedia.bind(this));
+        return { currentPage, hasNextPage: (total_hits - perpage * currentPage) > 0, media }
     }
 
     getById(id: number) {
@@ -47,47 +64,27 @@ export class MangaUpdates implements InfoMediaSource {
             });
     }
 
-    getByTitle(title: string) {
-        return this.searchTitle(title).then(results => results?.at(0));
-    }
-
     private callApi<T extends MangaUpdatesMedia | MangaUpdatesData>(path: string, options: RequestInit) {
         return this.fetch(this.api + path, options)
             .then(handleResponse<T>)
             .catch(handleError);
     }
 
-    private searchTitle(search: string): Promise<InfoMedia[] | undefined> {
-        const path = 'series/search';
-        const options = {
-            method: 'POST',
-            ...this.requestOptions,
-            body: JSON.stringify({
-                search,
-                perpage: 15,
-                include_rank_metadata: false
-            })
-        };
-
-        return this.callApi<MangaUpdatesData>(path, options)
-            .then(response => response?.results?.map(this.parseMangaUpdatesSearchMedia.bind(this)));
-    }
-
-    private cacheMedia(media: InfoMedia) {
+    private cacheMedia(media: TitleInfo) {
         this.cache.set(media.id, media);
     }
 
-    private tryGetCachedMedia(id: number): InfoMedia | undefined {
+    private tryGetCachedMedia(id: number): TitleInfo | undefined {
         return this.cache.get(id);
     }
 
-    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia, index: number): InfoMedia {
+    private parseMangaUpdatesSearchMedia(media: MangaUpdatesSearchMedia, index: number): TitleInfo {
         const result = this.parseMangaUpdatesMedia(media?.record);
         if (index < 5) this.cacheMedia(result);
         return result;
     }
 
-    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): InfoMedia {
+    private parseMangaUpdatesMedia(media: MangaUpdatesMedia): TitleInfo {
         const { series_id: id, url: link, genres, title, type, image } = media;
         const result = {
             id,

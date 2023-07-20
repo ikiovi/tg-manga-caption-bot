@@ -1,32 +1,37 @@
-interface InfoMedia {
-    source: SourceType
+interface TitleInfo {
     id: number
     link: string
-    title: string | string[]
-    caption: string
     image?: string
+    caption: string
+    source: SourceInfo
+    title: string | string[]
 }
 
-type InfoSearchMedia = Pick<InfoMedia, 'id' | 'source' | 'title'>;
+type TitleSearchInfo = Omit<TitleInfo, 'caption'>;
 
-type CaptionInfo = InfoSearchMedia & {
+type TitleCaptionInfo = TitleSearchInfo & {
     type: MangaType | 'Anime'
     genres?: string[]
 }
 
-interface SourceType {
+interface SourceInfo {
     readonly tag: string
     readonly previewType: PreviewType
 }
 
-interface InfoMediaSource extends SourceType {
+type TitleSearchPage = {
+    media: TitleSearchInfo[]
+    currentPage: number
+    hasNextPage: boolean
+}
+
+interface TitleInfoProvider extends SourceInfo {
     readonly link: string
     readonly api: string
     fetch(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>
-    where(args: Partial<InfoMediaSource>): InfoMediaSource
-    searchByTitle(search: string): Promise<InfoSearchMedia[] | undefined>
-    getByTitle(title: string): Promise<InfoMedia | undefined>
-    getById(id: number): Promise<InfoMedia | undefined>
+    where(args: Partial<TitleInfoProvider>): TitleInfoProvider
+    searchByTitle(search: string, page?: number): Promise<TitleSearchPage | undefined>
+    getById(id: number): Promise<TitleInfo | undefined>
 }
 
 const mangaTypes = ['Manga', 'Manhwa', 'Manhua', 'Novel', 'OEL',
@@ -37,4 +42,4 @@ const mangaTypes = ['Manga', 'Manhwa', 'Manhua', 'Novel', 'OEL',
 type PreviewType = 'Cover' | 'Link';
 type MangaType = typeof mangaTypes[number];
 
-export type { InfoMedia, InfoSearchMedia, InfoMediaSource, PreviewType, SourceType, CaptionInfo, MangaType };
+export type { TitleInfo, TitleSearchInfo, TitleSearchPage, TitleInfoProvider, PreviewType, SourceInfo, TitleCaptionInfo, MangaType };

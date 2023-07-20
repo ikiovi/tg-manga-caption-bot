@@ -1,5 +1,5 @@
 import { Context, MiddlewareFn } from '../deps.ts';
-import { InfoMedia, InfoSearchMedia, SourceType } from './manga.ts';
+import { TitleInfo, SourceInfo, TitleSearchPage } from './manga.ts';
 
 export interface Service<C extends Context> {
     middleware(): MiddlewareFn<C>
@@ -7,10 +7,9 @@ export interface Service<C extends Context> {
 
 export interface SourcesFlavor {
     sources: {
-        getFromId: (tag: string, id: number) => Promise<InfoMedia | undefined>
-        getFromFID: (fid: string) => Promise<InfoMedia | undefined>
-        searchFromTag: (tag: string, search: string) => Promise<InfoSearchMedia[] | undefined>
-        getFromTitle: (title: string) => Promise<InfoMedia | undefined>
-        list: SourceType[]
+        getFromId: (tag: string, id: number) => Promise<TitleInfo | undefined>
+        getFromFID: (fid: string) => Promise<TitleInfo | undefined>
+        searchTitle: (tag: string, title: string, page?: number) => Promise<TitleSearchPage | undefined>
+        list: SourceInfo[]
     }
 }

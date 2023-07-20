@@ -1,24 +1,23 @@
-import { Context, logger, MiddlewareFn } from '../deps.ts';
-import { InfoMediaSource, SourceType } from '../types/manga.ts';
-import { Service, SourcesFlavor } from '../types/services.ts';
 import { Anilist } from './manga/anilist/api.ts';
 import { MangaUpdates } from './manga/mangaupdates/api.ts';
-import { Bottleneck } from '../deps.ts';
+import { Service, SourcesFlavor } from '../types/services.ts';
+import { TitleInfoProvider, SourceInfo } from '../types/manga.ts';
+import { Context, logger, MiddlewareFn, Bottleneck } from '../deps.ts';
 import { getGroupsFromRegex, getRegexFromSources } from '../utils/utils.ts';
 
 class Sources<
     C extends Context & SourcesFlavor
-> extends Map<string, InfoMediaSource> implements Service<C> {
+> extends Map<string, TitleInfoProvider> implements Service<C> {
     private limiter: Bottleneck.Group;
     regex?: RegExp;
 
-    constructor(sources?: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>, options?: Bottleneck.ConstructorOptions) {
+    constructor(sources?: ReadonlyArray<TitleInfoProvider | { new(): TitleInfoProvider }>, options?: Bottleneck.ConstructorOptions) {
         super();
         this.limiter = new Bottleneck.Group(options);
         this.register(...sources ?? []);
     }
 
-    register(...sources: ReadonlyArray<InfoMediaSource | { new(): InfoMediaSource }>) {
+    register(...sources: ReadonlyArray<TitleInfoProvider | { new(): TitleInfoProvider }>) {
         sources.forEach(source => {
             if (typeof source == 'function') source = new source();
             if (!source.tag) {
@@ -36,8 +35,7 @@ class Sources<
             ctx.sources = {
                 getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
                 getFromId: (...args) => this.getFromId(chatLimiter, ...args),
-                searchFromTag: (...args) => this.searchFromTag(chatLimiter, ...args),
-                getFromTitle: (...args) => this.getFromTitle(chatLimiter, ...args),
+                searchTitle: (...args) => this.searchTitle(chatLimiter, ...args),
                 list: this.list
             };
             return await next();
@@ -48,34 +46,26 @@ class Sources<
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !id) return Promise.reject<undefined>();
         return source.getById(id).then(result => {
-            if(!result) logger.warning(`Attempt to obtain information for id ${id} failed. Result is empty.`);
+            if (!result) logger.warning(`Attempt to obtain information for id [${id}] failed. Result is empty.`);
             return result;
         });
     }
 
-    private searchFromTag(limiter: Bottleneck, tag: string, search: string) {
+    private searchTitle(limiter: Bottleneck, tag: string, title: string, page = 1) {
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
-        if (!source || !search) return Promise.reject<undefined>();
-        return source.searchByTitle(search);
-    }
-
-    private async getFromTitle(limiter: Bottleneck, title: string) {
-        if (!title) return Promise.reject<undefined>();
-        for (const source of this.values()) {
-            const result = await source.where({ fetch: limiter.wrap(fetch) }).getByTitle(title);
-            if (result) return result;
-        }
-        return Promise.reject<undefined>();
+        if (!source || !title) return Promise.reject<undefined>();
+        return source.searchByTitle(title, Math.abs(page));
     }
 
     private getFromFID(limiter: Bottleneck, fid: string) {
         const match = this.regex?.exec(fid);
         const { tag, id } = getGroupsFromRegex(match) ?? {};
         if (!tag || !id || isNaN(+id)) return Promise.reject<undefined>();
+        logger.info(`Getting info by id [${tag}${id}]`);
         return this.getFromId(limiter, tag, +id);
     }
 
-    public get list(): SourceType[] {
+    public get list(): SourceInfo[] {
         return [...this.values()];
     }
 }

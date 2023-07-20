@@ -5,22 +5,27 @@ type AnilistMedia = {
         english?: string
     }
     coverImage: {
-        extraLarge: string
+        extraLarge?: string
+        medium?: string
     }
+    tags: {
+        name: string
+    }[]
     synonyms: string[]
     genres: string[]
     siteUrl: string
     countryOfOrigin: 'JP' | 'CN' | 'KR' | string
 }
 
-type AnilistSearchMedia = Omit<AnilistMedia, 'genres' | 'siteUrl' | 'coverImage' | 'countryOfOrigin'>;
+type AnilistSearchMedia = Omit<AnilistMedia, 'genres' | 'countryOfOrigin' | 'tags'>
 
 type AnilistSearchData<M extends AnilistSearchMedia = AnilistSearchMedia> = {
     data: {
-        pageInfo: {
-            total: number
-        }
         Page: {
+            pageInfo: {
+                currentPage: number
+                hasNextPage: boolean
+            }
             media: M[]
         }
     }

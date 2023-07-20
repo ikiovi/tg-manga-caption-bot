@@ -1,88 +1,59 @@
-import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto, logger } from '../deps.ts';
+import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto } from '../deps.ts';
 import { MediaContext } from '../types/context.ts';
-import { InfoMedia } from '../types/manga.ts';
 
 export const media = new Composer<MediaContext>().chatType('channel');
 
-media.on(':photo', ctx => {
-    setupCatch(ctx, ctx.channelPost.photo[0]);
+media.on([':photo', ':document'], ctx => {
+    setupCatch(ctx,
+        (ctx.channelPost.photo?.at(-1) ?? ctx.channelPost.document)!.file_id,
+        !!ctx.channelPost.document
+    );
 });
 
-media.on(':document', ctx => {
-    setupCatch(ctx, ctx.channelPost.document);
-});
-
-function setupCatch<T extends ChatTypeContext<MediaContext, 'channel'>>(ctx: T, file?: { file_id: string }) {
-    if (!ctx.channelPost) throw new Error('Invalid argument');
+function setupCatch(ctx: ChatTypeContext<MediaContext, 'channel'>, file_id: string, isDocument: boolean) {
+    if (!ctx.channelPost) throw new TypeError('Unreachable');
     const { current } = ctx.session;
-    const { media_group_id, message_id, caption } = ctx.channelPost;
-    if (!file || (!caption && !media_group_id)) return;
-    const { file_id } = file;
+    const { media_group_id, message_id, has_media_spoiler } = ctx.channelPost;
+    if (!file_id || !current.infoMedia) return;
+    const cleanUp = () => ctx.session.current = {};
+
+    const params = {
+        caption: current.infoMedia.caption,
+        parse_mode: 'HTML',
+        has_spoiler: has_media_spoiler
+    } as const;
 
     if (!media_group_id) {
-        ctx.session.current = { ...current, id: message_id, media: file_id };
-        process(ctx);
-        return;
+        ctx.deleteMessage();
+        (isDocument ? ctx.replyWithDocument : ctx.replyWithPhoto).bind(ctx)(file_id, params);
+        return cleanUp();
     }
-    if (current.id != media_group_id) {
-        ctx.session.current = {
-            ...current,
-            id: media_group_id,
-            media: { [message_id]: file_id }
-        };
-        return;
-    }
-    (<Record<number, string>>ctx.session.current.media)[message_id] = file_id;
+
+    ctx.session.current.group_id ??= media_group_id;
+    ctx.session.current.media ??= new Map<number, string>();
+    current.media?.set(message_id, file_id);
+
+    if (current.group_id != media_group_id) return cleanUp();
     if (current.timer) clearTimeout(current.timer);
-    ctx.session.current.timer = setTimeout(() => process(ctx), 1000);
+
+    ctx.session.current.timer = setTimeout(() => processGroup(ctx, isDocument, params), 1000);
 }
 
-export function process(ctx: ChatTypeContext<MediaContext, 'channel'>) {
-    const cleanUp = () => { ctx.session.current = {}; };
-    if (!ctx.channelPost || !ctx.session.current.infoMedia) return cleanUp();
-    logger.info('Processing media');
-    processResult(ctx, ctx.session.current.infoMedia);
-    cleanUp();
-}
+function processGroup(ctx: ChatTypeContext<MediaContext, 'channel'>, isDocument: boolean, params: Partial<InputMediaDocument | InputMediaPhoto>) {
+    const { current: { media } } = ctx.session;
+    if (!media) return;
 
-function processResult(ctx: ChatTypeContext<MediaContext, 'channel'>, result: InfoMedia) {
-    if (!ctx.channelPost) throw new Error('Invalid argument');
-    const { media_group_id, message_id, document, chat: { id: chat_id } } = ctx.channelPost;
-    const params = { message_id, caption: result.caption, isDocument: !!document };
+    const result: Array<InputMediaPhoto | InputMediaDocument> = [];
 
-    if (!media_group_id) return processSingle(ctx, params);
-    return processGroup(ctx, { ...params, media_group_id, chat_id });
-}
-
-function processSingle(ctx: MediaContext, params: { message_id: number, caption: string, isDocument: boolean }) {
-    const { message_id, isDocument, caption } = params;
-    const { id, media } = ctx.session.current;
-    const file_id = media as string;
-    const options = { caption, parse_mode: 'HTML' } as const;
-    if (!file_id || message_id != id) return;
-
-    ctx.deleteMessage();
-    if (isDocument) return ctx.replyWithDocument(file_id, options);
-    ctx.replyWithPhoto(file_id, options);
-}
-
-function processGroup(ctx: MediaContext, params: { media_group_id: string, caption: string, isDocument: boolean, chat_id: number }) {
-    const { media_group_id, caption, isDocument, chat_id } = params;
-    const { current } = ctx.session;
-    const mediaGroup = current.media as Record<number, string>;
-    if (!mediaGroup || !chat_id || current.id != media_group_id) return;
-
-    const media: Array<InputMediaPhoto | InputMediaDocument> = [];
-
-    for (const message_id in mediaGroup) {
-        const id = +message_id;
+    for (const [id, file_id] of media) {
         if (isNaN(id)) continue;
-        media.push({
+        result.push({
             type: isDocument ? 'document' : 'photo',
-            media: mediaGroup[message_id]
+            media: file_id
         });
-        ctx.api.deleteMessage(chat_id, id);
+        ctx.api.deleteMessage(ctx.chat.id, id);
     }
-    media[0] = { ...media[0], caption, parse_mode: 'HTML' };
-    ctx.replyWithMediaGroup(media);
+    result[0] = { ...result[0], ...params };
+    ctx.session.current.shouldCatch = false;
+    ctx.replyWithMediaGroup(result);
 }

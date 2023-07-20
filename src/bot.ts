@@ -1,10 +1,10 @@
 import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
-import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger } from './deps.ts';
+import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger, InlineQueryResult } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
-import { getPreviewCaption } from './utils/caption.ts';
+import { getPreviewCaption, parseSynonyms } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
@@ -29,8 +29,8 @@ const initial = () => ({});
 //#region Services Registration
 bot.use(session({
     type: 'multi',
-    current: { initial },
-    private: { initial }
+    current: { initial, getSessionKey: ctx => `${ctx.chat?.id}` },
+    private: { initial, getSessionKey: ctx => `${ctx.from?.id}` }
 }));
 bot.use(i18n, sources);
 //#endregion
@@ -49,24 +49,12 @@ channelPost.hears(idRegex(), async (ctx, next) => {
     const { shouldCatch } = ctx.session.current;
     if (shouldCatch) ctx.session.current = {};
 
-    logger.info(`Getting info by id [${ctx.match[0]}]`);
     ctx.session.current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
     await startMediaHandle(ctx, next);
 });
 
-channelPost.hears(/-s (?<Search>.+)/i, async (ctx, next) => {
-    const searchQuery = ctx.match[1];
-    if (!searchQuery) return;
-
-    const { shouldCatch } = ctx.session.current;
-    if (shouldCatch) ctx.session.current = {};
-
-    logger.info(`Getting info by title [${searchQuery}]`);
-    ctx.session.current.infoMedia = await ctx.sources.getFromTitle(searchQuery);
-    await startMediaHandle(ctx, next);
-});
-
-channelPost.drop(ctx => !ctx.session.current.shouldCatch, media);
+channelPost.filter(ctx => ctx.session.current.shouldCatch ?? false, media);
+channelPost.drop(ctx => ctx.session.current.shouldCatch ?? false, ctx => ctx.session.current = {});
 //#endregion
 
 //#region Private Chat 
@@ -78,7 +66,7 @@ chatMessage.command('help', async ctx => {
     await ctx.reply(text);
 });
 
-chatMessage.hears(idRegex(), getIdHandler);
+chatMessage.hears(idRegex(), getFromIdHandler);
 //#endregion
 
 bot.inlineQuery(idRegex(), async ctx => {
@@ -94,7 +82,8 @@ bot.inlineQuery(idRegex(), async ctx => {
         title: Array.isArray(result.title) ? result.title[0] : result.title,
         url: result.link,
         hide_url: true,
-        thumb_url: result.image,
+        thumbnail_url: result.image,
+
         input_message_content: {
             message_text: caption,
             photo_url: result.image,
@@ -104,9 +93,41 @@ bot.inlineQuery(idRegex(), async ctx => {
     }]);
 });
 
+bot.on('inline_query', async ctx => {
+    const { query, offset: strOffset } = ctx.inlineQuery;
+    const searchQuery = query.trim();
+    if (!searchQuery) return;
+
+    const offset = +(strOffset ?? 1);
+    const source = ctx.session.private.source ?? ctx.sources.list[0].tag;
+    const { media, currentPage, hasNextPage } = await ctx.sources.searchTitle(source, searchQuery, offset) ?? {};
+    if (!media) return logger.error('Something went wrong');
+
+    const result = media.map(m => {
+        let title = m.title;
+        if (Array.isArray(title)) {
+            const { hasEqualValue, synonyms } = parseSynonyms(title, searchQuery);
+            title = hasEqualValue ? searchQuery : synonyms?.at(0) ?? '';
+        }
+        const id = m.source.tag + m.id;
+        return {
+            id: 'search_' + id,
+            title,
+            url: m.link,
+            type: 'article',
+            hide_url: true,
+            thumbnail_url: m.image,
+            input_message_content: {
+                message_text: id
+            }
+        } as InlineQueryResult
+    });
+
+    await ctx.answerInlineQuery(result, { next_offset: hasNextPage ? `${currentPage! + 1}` : undefined });
+});
 bot.callbackQuery(idRegex('get:'), async ctx => {
     await ctx.answerCallbackQuery();
-    await getIdHandler(ctx);
+    await getFromIdHandler(ctx);
 });
 
 bot.catch(err => logger.error(`${err.name} / ${err.message}`));
@@ -119,11 +140,12 @@ async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, n
     if (!current?.infoMedia) return logger.warning('Attempt to start media handle without info canceled');
 
     logger.info('Media handling started');
-    current.shouldCatch = true;
+    ctx.session.current.shouldCatch = true;
+    if (ctx.msg?.text) ctx.deleteMessage();
     await next();
 }
 
-async function getIdHandler(ctx: EmptySessionContext) {
+async function getFromIdHandler(ctx: EmptySessionContext) {
     if (!ctx.match?.[0]) return;
     const options = { parse_mode: 'HTML' } as const;
     const result = await ctx.sources.getFromFID(ctx.match[0]);

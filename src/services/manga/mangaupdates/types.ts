@@ -10,6 +10,7 @@ type MangaUpdatesMedia = {
     title: string
     url: string
     type: MangaType;
+    year: string
     genres?: { genre: string }[]
     image: {
         url: {
@@ -20,6 +21,7 @@ type MangaUpdatesMedia = {
 
 type MangaUpdatesData = {
     total_hits: number
+    page: number
     results: MangaUpdatesSearchMedia[]
 }
 
