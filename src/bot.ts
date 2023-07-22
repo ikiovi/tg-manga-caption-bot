@@ -98,7 +98,7 @@ bot.on('inline_query', async ctx => {
     const searchQuery = query.trim();
     if (!searchQuery) return;
 
-    const offset = +(strOffset ?? 1);
+    const offset = parseInt(strOffset) || 1;
     const source = ctx.session.private.source ?? ctx.sources.list[0].tag;
     const { media, currentPage, hasNextPage } = await ctx.sources.searchTitle(source, searchQuery, offset) ?? {};
     if (!media) return logger.error('Something went wrong');
