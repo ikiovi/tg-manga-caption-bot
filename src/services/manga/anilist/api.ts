@@ -55,9 +55,10 @@ export class Anilist implements TitleInfoProvider {
     private parseAnilistMedia(media: AnilistMedia): TitleInfo {
         const { genres, tags, countryOfOrigin, coverImage: { extraLarge } } = media;
         const base = this.parseAnilistSearchMedia(media);
-        const validTags = tags.map(t => t.name)
-            .filter(t => t.length <= 18 && (/^([a-zA-Z]| |\d)+$/).test(t)) //?
-            .slice(0, 5);
+        const validTags = tags.map(({ name }) => name)
+            .filter(t => t.length <= 18 && (/^([a-zA-Z]| |\d)+$/).test(t))
+            .slice(0, 4);
+
         return {
             ...base,
             image: extraLarge,
