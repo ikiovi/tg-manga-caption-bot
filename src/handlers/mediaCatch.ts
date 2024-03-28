@@ -19,7 +19,6 @@ function setupCatch(ctx: ChatTypeContext<MediaContext, 'channel'>, file_id: stri
 
     const params = {
         caption: current.infoMedia.caption,
-        parse_mode: 'HTML',
         has_spoiler: has_media_spoiler
     } as const;
 
@@ -36,7 +35,7 @@ function setupCatch(ctx: ChatTypeContext<MediaContext, 'channel'>, file_id: stri
     if (current.group_id != media_group_id) return cleanUp();
     if (current.timer) clearTimeout(current.timer);
 
-    ctx.session.current.timer = setTimeout(() => processGroup(ctx, isDocument, params), 1000);
+    ctx.session.current.timer = setTimeout(() => processGroup(ctx, isDocument, params), 3000);
 }
 
 function processGroup(ctx: ChatTypeContext<MediaContext, 'channel'>, isDocument: boolean, params: Partial<InputMediaDocument | InputMediaPhoto>) {

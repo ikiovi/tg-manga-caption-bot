@@ -1,5 +1,5 @@
-import 'https://deno.land/x/dotenv@v3.2.0/load.ts';
-import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger, InlineQueryResult } from './deps.ts';
+import 'https://deno.land/x/dotenv@v3.2.2/load.ts';
+import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger, InlineQueryResult, parseMode } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
@@ -19,6 +19,8 @@ const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
 });
 const idRegex = (prefix = '') => new RegExp('^' + prefix + sources.regex?.source + '$');
 
+//@ts-ignore Idk, it's screaming because of different versions of grammy.
+//But it also works, so...
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
     useSession: true,
@@ -27,6 +29,7 @@ const i18n = new I18n<MyContext>({
 
 const initial = () => ({});
 //#region Services Registration
+bot.api.config.use(parseMode('HTML'));
 bot.use(session({
     type: 'multi',
     current: { initial, getSessionKey: ctx => `${ctx.chat?.id}` },
@@ -73,7 +76,6 @@ bot.inlineQuery(idRegex(), async ctx => {
     if (!ctx.match?.[0]) return;
     const result = await ctx.sources.getFromFID(ctx.match[0]);
     if (!result) return;
-
     const caption = getPreviewCaption(result);
 
     await ctx.answerInlineQuery([{
@@ -86,9 +88,7 @@ bot.inlineQuery(idRegex(), async ctx => {
 
         input_message_content: {
             message_text: caption,
-            photo_url: result.image,
-            disable_web_page_preview: false,
-            parse_mode: 'HTML'
+            photo_url: result.image
         }
     }]);
 });
@@ -137,7 +137,7 @@ Deno.addSignalListener('SIGINT', bot.stop);
 
 async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
     const { current } = ctx.session;
-    if (!current?.infoMedia) return logger.warning('Attempt to start media handle without info canceled');
+    if (!current?.infoMedia) return logger.warn('Attempt to start media handle without info canceled');
 
     logger.info('Media handling started');
     ctx.session.current.shouldCatch = true;
@@ -147,13 +147,12 @@ async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, n
 
 async function getFromIdHandler(ctx: EmptySessionContext) {
     if (!ctx.match?.[0]) return;
-    const options = { parse_mode: 'HTML' } as const;
     const result = await ctx.sources.getFromFID(ctx.match[0]);
     if (!result) return;
 
     const caption = getPreviewCaption(result);
 
     if (result.source.previewType == 'Cover' && result.image)
-        return await ctx.replyWithPhoto(result.image, { ...options, caption });
-    await ctx.reply(caption, options);
+        return await ctx.replyWithPhoto(result.image, { caption });
+    await ctx.reply(caption);
 }

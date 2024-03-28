@@ -8,14 +8,14 @@ import { getGroupsFromRegex } from '../utils/utils.ts';
 export const search = new Composer<SearchContext>().chatType('private');
 
 search.command(['setSource', 'setsource'], async ctx => {
-    const keyboard = ctx.sources.list.reduce<InlineKeyboard>(
-        (k, { tag }) => k.text(
+    const buttons = ctx.sources.list.map(
+        ({ tag }) => InlineKeyboard.text(
             ctx.t('source-' + tag.toLowerCase()),
             'search:' + tag
-        ), new InlineKeyboard()
+        )
     );
 
-    await ctx.reply(ctx.t('select-source'), { reply_markup: keyboard });
+    await ctx.reply(ctx.t('select-source'), { reply_markup: InlineKeyboard.from([buttons]) });
 });
 
 search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
@@ -25,7 +25,7 @@ search.callbackQuery(/^search:(?<tag>[a-zA-Z]*)/, async ctx => {
     ctx.session.private.source = tag;
     const name = ctx.t('source-' + tag.toLowerCase());
     if (!name) return;
-    await ctx.editMessageText(ctx.t('current-source', { name }), { reply_markup: undefined, parse_mode: 'HTML' });
+    await ctx.editMessageText(ctx.t('current-source', { name }), { reply_markup: undefined });
 });
 
 search.on(':text', async ctx => {
@@ -35,7 +35,7 @@ search.on(':text', async ctx => {
     if (!media) return logger.error('Something went wrong');
     const { message, result, keyboard } = parseMedia(media, text);
     if (!result) return ctx.reply(ctx.t(message));
-    ctx.reply(message, { reply_markup: keyboard, parse_mode: 'HTML' });
+    ctx.reply(message, { reply_markup: keyboard });
 });
 
 //??

@@ -7,7 +7,7 @@
     "src/"
   ],
   "tasks": {
-    "start": "deno run --unstable --allow-env --allow-read --allow-net src/bot.ts"
+    "start": "deno run --allow-env --allow-read --allow-net src/bot.ts"
   },
   "lint": {
     "rules": {
