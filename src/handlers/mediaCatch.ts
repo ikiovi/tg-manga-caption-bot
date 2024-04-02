@@ -1,4 +1,4 @@
-import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto } from '../deps.ts';
+import { ChatTypeContext, Composer, InputMediaDocument, InputMediaPhoto, logger } from '../deps.ts';
 import { MediaContext } from '../types/context.ts';
 
 export const media = new Composer<MediaContext>().chatType('channel');
@@ -40,7 +40,7 @@ function setupCatch(ctx: ChatTypeContext<MediaContext, 'channel'>, file_id: stri
 
 function processGroup(ctx: ChatTypeContext<MediaContext, 'channel'>, isDocument: boolean, params: Partial<InputMediaDocument | InputMediaPhoto>) {
     const { current: { media } } = ctx.session;
-    if (!media) return;
+    if (!media) return logger.warn('No media. Canceling');
 
     const result: Array<InputMediaPhoto | InputMediaDocument> = [];
 

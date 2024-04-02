@@ -11,5 +11,6 @@ export interface SourcesFlavor {
         getFromFID: (fid: string) => Promise<TitleInfo | undefined>
         searchTitle: (tag: string, title: string, page?: number) => Promise<TitleSearchPage | undefined>
         list: SourceInfo[]
+        regex?: RegExp
     }
 }

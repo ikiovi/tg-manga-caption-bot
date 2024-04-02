@@ -36,7 +36,8 @@ class Sources<
                 getFromFID: (...args) => this.getFromFID(chatLimiter, ...args),
                 getFromId: (...args) => this.getFromId(chatLimiter, ...args),
                 searchTitle: (...args) => this.searchTitle(chatLimiter, ...args),
-                list: this.list
+                list: this.list,
+                regex: this.regex
             };
             return await next();
         };
@@ -46,7 +47,7 @@ class Sources<
         const source = this.get(tag)?.where({ fetch: limiter.wrap(fetch) });
         if (!source || !id) return Promise.reject<undefined>();
         return source.getById(id).then(result => {
-            if (!result) logger.warning(`Attempt to obtain information for id [${id}] failed. Result is empty.`);
+            if (!result) logger.warn(`Attempt to obtain information for id [${id}] failed. Result is empty.`);
             return result;
         });
     }

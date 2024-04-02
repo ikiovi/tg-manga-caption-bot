@@ -4,6 +4,7 @@ import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
+import { editHandler } from "./handlers/edit.ts";
 import { getPreviewCaption, parseSynonyms } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
@@ -19,7 +20,7 @@ const sources = new Sources<MyContext>([Anilist, MangaUpdates], {
 });
 const idRegex = (prefix = '') => new RegExp('^' + prefix + sources.regex?.source + '$');
 
-//@ts-ignore Idk, it's screaming because of different versions of grammy.
+//@ts-ignore Idk, it's screams because of different versions of grammy.
 //But it also works, so...
 const i18n = new I18n<MyContext>({
     defaultLocale: 'en',
@@ -43,24 +44,28 @@ const channelPost = new Composer<MediaContext>().chatType('channel');
 const chatMessage = new Composer<EmptySessionContext>().chatType('private');
 
 bot.chatType('channel', channelPost);
-bot.chatType('private', chatMessage, search);
-
+bot.chatType('private', editHandler, chatMessage, search);
 //#endregion
 
-//#region Channel Post
+//#region Channel
 channelPost.hears(idRegex(), async (ctx, next) => {
     const { shouldCatch } = ctx.session.current;
     if (shouldCatch) ctx.session.current = {};
 
-    ctx.session.current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
-    await startMediaHandle(ctx, next);
+    const media = ctx.session.current.infoMedia = await ctx.sources.getFromFID(ctx.match[0]);
+    if (!media) return logger.warn('Attempt to start media handle without info canceled');
+
+    logger.info('Media handling started');
+    ctx.session.current.shouldCatch = true;
+    if (ctx.msg?.text) ctx.deleteMessage();
+    await next();
 });
 
 channelPost.filter(ctx => ctx.session.current.shouldCatch ?? false, media);
 channelPost.drop(ctx => ctx.session.current.shouldCatch ?? false, ctx => ctx.session.current = {});
 //#endregion
 
-//#region Private Chat 
+//#region Private 
 chatMessage.command('help', async ctx => {
     const commands = await ctx.api.getMyCommands();
     const text = !commands.length ? '_' : commands.map(
@@ -72,6 +77,7 @@ chatMessage.command('help', async ctx => {
 chatMessage.hears(idRegex(), getFromIdHandler);
 //#endregion
 
+//#region Inline
 bot.inlineQuery(idRegex(), async ctx => {
     if (!ctx.match?.[0]) return;
     const result = await ctx.sources.getFromFID(ctx.match[0]);
@@ -111,20 +117,22 @@ bot.on('inline_query', async ctx => {
         }
         const id = m.source.tag + m.id;
         return {
-            id: 'search_' + id,
             title,
             url: m.link,
             type: 'article',
-            hide_url: true,
+            id: 'search_' + id,
             thumbnail_url: m.image,
             input_message_content: {
                 message_text: id
-            }
+            },
+            hide_url: true
         } as InlineQueryResult
     });
 
     await ctx.answerInlineQuery(result, { next_offset: hasNextPage ? `${currentPage! + 1}` : undefined });
 });
+//#endregion
+
 bot.callbackQuery(idRegex('get:'), async ctx => {
     await ctx.answerCallbackQuery();
     await getFromIdHandler(ctx);
@@ -134,16 +142,6 @@ bot.catch(err => logger.error(`${err.name} / ${err.message}`));
 bot.start({ drop_pending_updates: true });
 
 Deno.addSignalListener('SIGINT', bot.stop);
-
-async function startMediaHandle(ctx: ChatTypeContext<MediaContext, 'channel'>, next: NextFunction) {
-    const { current } = ctx.session;
-    if (!current?.infoMedia) return logger.warn('Attempt to start media handle without info canceled');
-
-    logger.info('Media handling started');
-    ctx.session.current.shouldCatch = true;
-    if (ctx.msg?.text) ctx.deleteMessage();
-    await next();
-}
 
 async function getFromIdHandler(ctx: EmptySessionContext) {
     if (!ctx.match?.[0]) return;

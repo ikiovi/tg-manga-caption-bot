@@ -8,7 +8,8 @@ type MyContext = BaseContext<SessionData>;
 type MediaContext = BaseContext<MediaSessionData>;
 type SearchContext = BaseContext<SearchSessionData>;
 type EmptySessionContext = BaseContext<Empty>;
-type SessionData = MediaSessionData & SearchSessionData;
+type EditSessionContext = BaseContext<EditSessionData>
+type SessionData = MediaSessionData & SearchSessionData & EditSessionData;
 
 interface MediaSessionData {
     current: {
@@ -26,4 +27,14 @@ interface SearchSessionData {
     }
 }
 
-export type { MyContext, MediaContext, SearchContext, EmptySessionContext };
+interface EditSessionData {
+    private: {
+        edit?: {
+            infoMedia: TitleInfo
+            groups: Set<string>
+            posts: Map<number, number[]>
+        }
+    }
+}
+
+export type { MyContext, MediaContext, SearchContext, EmptySessionContext, EditSessionContext };

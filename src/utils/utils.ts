@@ -18,12 +18,13 @@ function where<T extends object, F = T>(this: T, args?: Partial<F>): T {
 
 //#region Handlers
 function handleResponse<T>(response: Response) {
-    if (!response.ok) logger.error(`${response.status}| ${response.statusText}`);
+    if (!response.ok) logger.error(`${response.status} | ${response.statusText}`);
     return response.json().then(json => response.ok ? <T>json : Promise.reject(json));
 }
 
 function handleError(error: unknown) {
     logger.error(error);
+    return undefined;
 }
 //#endregion
 

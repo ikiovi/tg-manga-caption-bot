@@ -46,7 +46,7 @@ export class Anilist implements TitleInfoProvider {
                 query,
                 variables
             })
-        };
+        }; //TODO: Implement retries. Often returns 500
         return this.fetch(this.api, options)
             .then(handleResponse<T>)
             .catch(handleError);
