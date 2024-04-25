@@ -1,8 +1,9 @@
 import { logger } from '../deps.ts';
 import { SourceInfo } from '../types/manga.ts';
 
-function getRegexFromSources(arr: SourceInfo[]) {
-    return new RegExp(`#?(?<tag>${arr.map(s => s.tag).join('|')})(?<id>\\d*)`);
+function getRegexFromSources(arr: SourceInfo[], hasId = true) {
+    const idRegex = hasId ? '(?<id>\\d*)' : '';
+    return new RegExp(`#?(?<tag>${arr.map(s => s.tag).join('|')})${idRegex}`);
 }
 
 function getGroupsFromRegex(match: string | RegExpMatchArray | undefined | null) {

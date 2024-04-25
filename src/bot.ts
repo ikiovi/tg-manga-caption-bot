@@ -6,6 +6,7 @@ import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
 import { editHandler } from './handlers/edit.ts';
 import { getPreviewCaption, parseSynonyms } from './utils/caption.ts';
+import { getRegexFromSources } from "./utils/utils.ts";
 
 const token = Deno.env.get('TOKEN');
 if (!token) throw new Error('TOKEN must be provided!');
@@ -101,11 +102,14 @@ bot.inlineQuery(idRegex(), async ctx => {
 
 bot.on('inline_query', async ctx => {
     const { query, offset: strOffset } = ctx.inlineQuery;
-    const searchQuery = query.trim();
+    let searchQuery = query.trim();
     if (!searchQuery) return;
 
     const offset = parseInt(strOffset) || 1;
-    const source = ctx.session.private.source ?? ctx.sources.list[0].tag;
+    const sourceRegex = new RegExp('\/' + getRegexFromSources(ctx.sources.list, false).source + '$')
+
+    const source = sourceRegex.exec(searchQuery)?.groups?.tag ?? ctx.session.private.source ?? ctx.sources.list[0].tag;
+    searchQuery = searchQuery.replace(sourceRegex, '');
     const { media, currentPage, hasNextPage } = await ctx.sources.searchTitle(source, searchQuery, offset) ?? {};
     if (!media) return logger.error('Something went wrong');
 
