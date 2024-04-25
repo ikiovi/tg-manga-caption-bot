@@ -1,6 +1,5 @@
-import { MessageOriginChannel } from "https://deno.land/x/grammy@v1.21.2/types.deno.ts";
-import { Composer, InlineKeyboard, logger } from "../deps.ts";
-import { EditSessionContext } from "../types/context.ts";
+import { Composer, InlineKeyboard, MessageOriginChannel, logger } from '../deps.ts';
+import { EditSessionContext } from '../types/context.ts';
 
 export const editHandler = new Composer<EditSessionContext>();
 const internal = new Composer<EditSessionContext>();

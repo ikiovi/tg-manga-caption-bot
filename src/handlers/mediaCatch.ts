@@ -19,7 +19,8 @@ function setupCatch(ctx: ChatTypeContext<MediaContext, 'channel'>, file_id: stri
 
     const params = {
         caption: current.infoMedia.caption,
-        has_spoiler: has_media_spoiler
+        has_spoiler: has_media_spoiler,
+        parse_mode: 'HTML' // For some reason plugin doesn't work when sending media group
     } as const;
 
     if (!media_group_id) {

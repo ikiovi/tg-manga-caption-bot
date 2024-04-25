@@ -1,10 +1,10 @@
 import 'https://deno.land/x/dotenv@v3.2.2/load.ts';
-import { Bot, Bottleneck, Composer, I18n, session, NextFunction, ChatTypeContext, logger, InlineQueryResult, parseMode } from './deps.ts';
+import { Bot, Bottleneck, Composer, I18n, session, logger, InlineQueryResult, parseMode } from './deps.ts';
 import { EmptySessionContext, MediaContext, MyContext } from './types/context.ts';
 import { Anilist, MangaUpdates, Sources } from './services/sources.ts';
 import { media } from './handlers/mediaCatch.ts';
 import { search } from './handlers/search.ts';
-import { editHandler } from "./handlers/edit.ts";
+import { editHandler } from './handlers/edit.ts';
 import { getPreviewCaption, parseSynonyms } from './utils/caption.ts';
 
 const token = Deno.env.get('TOKEN');
